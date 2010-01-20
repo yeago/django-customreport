@@ -21,34 +21,36 @@ def results_view(queryset,display_fields=None):
 			continue # Want below check to work only for relations, excluding aggregates. 
 
 		select_related_token = i
-		"""
-		Since select_related() is rather flexible about what it receives
-		(ignoring things it doesn't like), we'll just haphazardly pass 
-		all filter and display fields in for now.
-		"""
-
 		if LOOKUP_SEP in i:
+			"""
+			Since select_related() is rather flexible about what it receives
+			(ignoring things it doesn't like), we'll just haphazardly pass 
+			all filter and display fields in for now.
+			"""
 			select_related_token = i.split(LOOKUP_SEP)
-			select_related_token.pop()
+			select_related_token.pop() # get rid of the field name
 			select_related_token = LOOKUP_SEP.join(select_related_token)
-			model, field, name = get_closest_relation(queryset.model,i)
-		
-			try:
-				table = queryset.query.table_map[model._meta.db_table][-1] # The last join is probably(tm) right.
-				queryset = queryset.extra(select={i: '%s.%s' % (table,field.column)})
 
-			except KeyError:
-				table = model._meta.db_table
-				relation = None
-				for r in model._meta.get_all_field_names():
-					f = model._meta.get_field(r)
-					if hasattr(f.rel,'to') and f.rel.to == queryset.model:
-						rel = f.column
-						break
+			primary_model = queryset.model
+			join_route = i
+			if len(i.split(LOOKUP_SEP)) > 2:
+				second_to_last = LOOKUP_SEP.join(i.split(LOOKUP_SEP)[0:-1])
+				join_route = LOOKUP_SEP.join(i.split(LOOKUP_SEP)[-2:])
+				primary_model = get_closest_relation(queryset.model,second_to_last)[0]
 
-				whereclause = '%s.id = %s.%s' % (queryset.model._meta.db_table,table,rel)
+			primary_table = primary_model._meta.db_table
+			if primary_table in queryset.query.table_map:
+				primary_table = queryset.query.table_map[primary_table][-1] # Will the last one always work?
 
-				queryset = queryset.extra(tables=[table],where=[whereclause],select={i: '%s.%s' % (table,field.column)})
+			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
+			join_table = join_model._meta.db_table
+
+			"""
+			Since we found the join table in the query, we don't need to
+			do anything additional but add it to extra
+			"""
+			join_table = queryset.query.table_map[join_table][-1]
+			queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
 
 		select_related.append(select_related_token)
 
@@ -127,7 +129,6 @@ class custom_view(object):
 		form.fields = kept_fields
 	
 		from django import forms
-		print self.request.GET
 		form.fields['display_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in display_fields],required=False)
 		form.fields['filter_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in filter_fields])
 
@@ -140,11 +141,13 @@ class custom_view(object):
 			if not isinstance(self.queryset,QuerySet): # it was passed in above
 				queryset = self.filter.queryset
 
-			return self.render_results(queryset,display_fields=display_fields + filter_fields)
+			display_fields = display_fields + filter_fields
+
+			return self.render_results(queryset,display_fields=display_fields)
 
 		return self.fallback(post_form=form,display_fields=display_fields)
 
-	def render_results(self,queryset,display_fields = None):
+	def render_results(self,queryset,display_fields=None):
 		return results_view(queryset,display_fields=display_fields)
 
 class displayset_view(custom_view):
@@ -192,12 +195,12 @@ class displayset_view(custom_view):
 		return super(displayset_view,self).render_post_form(**kwargs)
 
 	def render_results(self,queryset,display_fields=None):
-		queryset = super(displayset_view,self).render_results(queryset)
 		filter = self.filter_class(self.request.GET,queryset=queryset)
+		queryset = super(displayset_view,self).render_results(filter.qs,display_fields=display_fields)
 		filter.get_parameters = {}
 		
 		self.displayset_class.display_fields = display_fields
 		self.displayset_class.change_list_template = self.change_list_template
 		from django_displayset import views as displayset_views
-		return displayset_views.generic(self.request,filter.qs,self.displayset_class,\
+		return displayset_views.generic(self.request,queryset,self.displayset_class,\
 						extra_context={'filter': filter})

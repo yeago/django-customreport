@@ -69,7 +69,6 @@ class BaseCustomPreForm(forms.Form):
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
 	def __init__(self,queryset,depth=3,inclusions=None,exclusions=None,*args,**kwargs):
 		from django_customreport.helpers import display_list
-		print depth, inclusions, exclusions
 		kwargs.update({
 			'choices': display_list(queryset,depth=depth,inclusions=inclusions,exclusions=exclusions),
 			'widget': FilteredSelectMultiple("display_fields", is_stacked=False)
