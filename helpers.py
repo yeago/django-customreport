@@ -177,7 +177,7 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 		else: 
 			_relation_list.extend([
 				(LOOKUP_SEP.join([relation[1], relation_pair[0]]),
-				' :: '.join([model_class._meta.module_name, relation[2], relation_pair[1]])) \
+				' :: '.join([_model_class._meta.module_name, relation[2], relation_pair[1]])) \
 				for relation_pair in relation_pair_list
 			])
 
