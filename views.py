@@ -169,7 +169,9 @@ class displayset_view(custom_view):
 		cls.depth = depth
 		cls.change_list_template = change_list_template
 		cls.displayset_class = displayset_class
-		return custom_view.__call__(cls,request,queryset=queryset,extra_context={'filter': cls.filter},*args,**kwargs)
+		kwargs['extra_context'] = kwargs['extra_context'] or {}
+		kwargs['extra_context'].update({'filter': cls.filter})
+		return custom_view.__call__(cls,request,queryset=queryset,*args,**kwargs)
 
 	def get_post_form(self):
 		return self.filter.form
@@ -196,4 +198,4 @@ class displayset_view(custom_view):
 		self.displayset_class.change_list_template = self.change_list_template
 		from django_displayset import views as displayset_views
 		return displayset_views.generic(self.request,queryset,self.displayset_class,\
-						extra_context={'filter': filter})
+				extra_context=self.extra_context)
