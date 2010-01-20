@@ -127,7 +127,6 @@ class custom_view(object):
 		form.fields = kept_fields
 	
 		from django import forms
-		print self.request.GET
 		form.fields['display_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in display_fields],required=False)
 		form.fields['filter_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in filter_fields])
 
