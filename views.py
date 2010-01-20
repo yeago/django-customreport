@@ -45,10 +45,6 @@ def results_view(queryset,display_fields=None):
 			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
 			join_table = join_model._meta.db_table
 
-			"""
-			Since we found the join table in the query, we don't need to
-			do anything additional but add it to extra
-			"""
 			join_table = queryset.query.table_map[join_table][-1]
 			queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
 
@@ -140,10 +136,7 @@ class custom_view(object):
 			from django.db.models.query import QuerySet
 			if not isinstance(self.queryset,QuerySet): # it was passed in above
 				queryset = self.filter.queryset
-
-			display_fields = display_fields + filter_fields
-
-			return self.render_results(queryset,display_fields=display_fields)
+			return self.render_results(queryset,display_fields=display_fields + filter_fields)
 
 		return self.fallback(post_form=form,display_fields=display_fields)
 
@@ -165,7 +158,7 @@ class displayset_view(custom_view):
 
 	http://github.com/subsume/django-displayset
 
-	3) change_list_template - this is the template used ablove
+	3) change_list_template - this is the template used above
 
 	"""
 	def __call__(cls, filter_class, displayset_class, request, queryset=None,\
