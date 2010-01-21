@@ -13,6 +13,8 @@ def results_view(queryset,display_fields=None):
 	Relations look like: ['address__zip','contact__date']
 
 	"""
+
+	print queryset.query.as_sql()
 	display_fields = display_fields or []
 	extra_select_kwargs = {}
 	select_related = []
@@ -47,6 +49,15 @@ def results_view(queryset,display_fields=None):
 
 			try:
 				join_table = queryset.query.table_map[join_table][-1]
+				"""
+				This is an important directive, but an experimental one.
+
+				Essentially we stitch together all querying done in the filterset so that
+				tables are only joined once, and therefore we can filter distant relations
+				and yet make certain filtering is being applied to one table, rather than
+				joins being created by each filtering as is the normal behavior
+				"""
+				queryset.query.table_map[join_table] = [queryset.query.table_map[join_table][-1]]
 				queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
 			except KeyError:
 				"""
@@ -60,9 +71,9 @@ def results_view(queryset,display_fields=None):
 				"""
 				join_table = join_model._meta.db_table
 				for field_name in join_model._meta.get_all_field_names():
+					from django.db import models
 					try:
 						field = join_model._meta.get_field(field_name)
-						from django.db import models
 						if (isinstance(field,models.OneToOneField) or isinstance(field,models.ForeignKey)) and \
 								field.rel.to == primary_model:
 
@@ -79,6 +90,7 @@ def results_view(queryset,display_fields=None):
 		select_related.append(select_related_token)
 
 	queryset = queryset.select_related(*select_related)
+	print queryset.query.as_sql()
 	return queryset
 
 class custom_view(object):
