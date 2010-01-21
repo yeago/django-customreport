@@ -68,10 +68,12 @@ def results_view(queryset,display_fields=None):
 
 							whereclause = '%s.id=%s.%s' % (primary_table,join_table,field.column)
 							queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},tables=[join_table],where=[whereclause])
+							break
 
 					except models.FieldDoesNotExist:
 						pass
 
+			print queryset.query.as_sql()
 				#queryset = queryset.extra(tables=[join_table])
 
 		select_related.append(select_related_token)
