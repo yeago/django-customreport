@@ -68,7 +68,10 @@ def results_view(queryset,display_fields=None):
 
 							whereclause = '%s.id=%s.%s' % (primary_table,join_table,field.column)
 							queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},tables=[join_table],where=[whereclause])
-							break
+							"""
+							WTFBUG. For some reason, this must be called or I get Non-unique alias/table error
+							"""
+							queryset.query.as_sql()
 
 					except models.FieldDoesNotExist:
 						pass
