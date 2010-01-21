@@ -73,9 +73,6 @@ def results_view(queryset,display_fields=None):
 					except models.FieldDoesNotExist:
 						pass
 
-			print queryset.query.as_sql()
-				#queryset = queryset.extra(tables=[join_table])
-
 		select_related.append(select_related_token)
 
 	queryset = queryset.select_related(*select_related)
