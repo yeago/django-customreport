@@ -5,7 +5,7 @@ from django_displayset import views as displayset_views
 
 class CustomReportDisplaySet(displayset_views.DisplaySet):
 	list_display = []
-	change_list_template = None
+	change_list_template = 'customreport/base.html'
 	def __init__(self,*args,**kwargs):
 		self.list_display = self.get_display_funcs()
 		super(CustomReportDisplaySet,self).__init__(*args,**kwargs)

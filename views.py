@@ -187,13 +187,11 @@ class displayset_view(custom_view):
 	3) change_list_template - this is the template used above
 
 	"""
-	def __call__(cls, filter_class, displayset_class, request, queryset=None,\
-			change_list_template='customreport/base.html',exclusions=None,depth=None,*args, **kwargs):
+	def __call__(cls, filter_class, displayset_class, request, queryset=None,exclusions=None,depth=None,*args, **kwargs):
 		cls.filter_class = filter_class
 		cls.filter = filter_class(request.GET or None,queryset=queryset)
 		cls.exclusions = exclusions
 		cls.depth = depth
-		cls.change_list_template = change_list_template
 		cls.displayset_class = displayset_class
 		kwargs['extra_context'] = kwargs['extra_context'] or {}
 		kwargs['extra_context'].update({'filter': cls.filter})
@@ -221,7 +219,6 @@ class displayset_view(custom_view):
 		filter.get_parameters = {}
 		
 		self.displayset_class.display_fields = display_fields
-		self.displayset_class.change_list_template = self.change_list_template
 		from django_displayset import views as displayset_views
 		return displayset_views.generic(self.request,queryset,self.displayset_class,\
 				extra_context=self.extra_context)
