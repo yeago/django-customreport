@@ -45,8 +45,34 @@ def results_view(queryset,display_fields=None):
 			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
 			join_table = join_model._meta.db_table
 
-			join_table = queryset.query.table_map[join_table][-1]
-			queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
+			try:
+				join_table = queryset.query.table_map[join_table][-1]
+				queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
+			except KeyError:
+				"""
+				Design decision. This will work fine if the ModelAdmin does the displaying of
+				related objects for us. At this time, Django doesn't. We have a patch in place
+				but aren't using it.
+
+				For now... at this point we know validation has barred all but forward or one-to-ones.
+
+				for now we just need the join column between the primary table and the join table.
+				"""
+				join_table = join_model._meta.db_table
+				for field_name in join_model._meta.get_all_field_names():
+					try:
+						field = join_model._meta.get_field(field_name)
+						from django.db import models
+						if (isinstance(field,models.OneToOneField) or isinstance(field,models.ForeignKey)) and \
+								field.rel.to == primary_model:
+
+							whereclause = '%s.id=%s.%s' % (primary_table,join_table,field.column)
+							queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},tables=[join_table],where=[whereclause])
+
+					except models.FieldDoesNotExist:
+						pass
+
+				#queryset = queryset.extra(tables=[join_table])
 
 		select_related.append(select_related_token)
 
