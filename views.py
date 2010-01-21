@@ -14,7 +14,6 @@ def results_view(queryset,display_fields=None):
 
 	"""
 
-	print queryset.query.as_sql()
 	display_fields = display_fields or []
 	extra_select_kwargs = {}
 	select_related = []
@@ -90,7 +89,6 @@ def results_view(queryset,display_fields=None):
 		select_related.append(select_related_token)
 
 	queryset = queryset.select_related(*select_related)
-	print queryset.query.as_sql()
 	return queryset
 
 class custom_view(object):
