@@ -45,18 +45,9 @@ def results_view(queryset,display_fields=None):
 
 			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
 			join_table = join_model._meta.db_table
-
+			
 			try:
 				join_table = queryset.query.table_map[join_table][-1]
-				"""
-				This is an important directive, but an experimental one.
-
-				Essentially we stitch together all querying done in the filterset so that
-				tables are only joined once, and therefore we can filter distant relations
-				and yet make certain filtering is being applied to one table, rather than
-				joins being created by each filtering as is the normal behavior
-				"""
-				queryset.query.table_map[join_table] = [queryset.query.table_map[join_table][-1]]
 				queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
 			except KeyError:
 				"""
@@ -69,19 +60,15 @@ def results_view(queryset,display_fields=None):
 				for now we just need the join column between the primary table and the join table.
 				"""
 				join_table = join_model._meta.db_table
-				for field_name in join_model._meta.get_all_field_names():
+				for field_name in primary_model._meta.get_all_field_names():
 					from django.db import models
 					try:
-						field = join_model._meta.get_field(field_name)
+						field = primary_model._meta.get_field(field_name)
 						if (isinstance(field,models.OneToOneField) or isinstance(field,models.ForeignKey)) and \
-								field.rel.to == primary_model:
+								field.rel.to == join_model:
 
-							whereclause = '%s.id=%s.%s' % (primary_table,join_table,field.column)
+							whereclause = '%s.id=%s.%s' % (join_table,primary_table,field.column)
 							queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},tables=[join_table],where=[whereclause])
-							"""
-							WTFBUG. For some reason, this must be called or I get Non-unique alias/table error
-							"""
-							queryset.query.as_sql()
 
 					except models.FieldDoesNotExist:
 						pass
