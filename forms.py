@@ -62,8 +62,8 @@ class BaseCustomPreForm(forms.Form):
 					if len(f.split('__')) > 1:
 						filtering_field = f.split('__')[-2] # we want the last module, not the field
 
-					raise forms.ValidationError("Cannot display the field '%s' without also filtering on that record." \
-							% (' :: '.join(f.split('__')), filtering_field) )
+					raise forms.ValidationError("Cannot display the field '%s' without also filtering on %s." \
+							% (' :: '.join(f.split('__')),filtering_field) )
 		return self.cleaned_data
 
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
