@@ -95,6 +95,9 @@ def custom(request,filterset_class=CustomFilterSet):
 		'referral__refer_to__*',
 	]
 
+	# The DisplaySet expected below is a http://github.com/subsume/django-displayset
+	# Essentialy, its a ModelAdmin like object used for displaying like django-admin
+
     return customer_displayset_view(filterset_class,CustomerDisplaySet,request,exclusions=exclusions,depth=3,\
             template_name="customer/reports/custom.html",\
             queryset=cmodels.Customer.objects.all().annotate(Max('contact__date')))
