@@ -33,37 +33,37 @@ class BaseCustomPreForm(forms.Form):
 				""" Forward Relation Check """
 				model = None	
 				split_relation = f.split('__')[:-1] # we don't want the field it is accessing, so use [:-1]
+				model = self.queryset.model
 				for rel in split_relation:
 					# get_field_by_name returns a 4-tuple, 3rd index (2) relates to local fields, 1st index to the field/relation
-					model = model or self.queryset.model
 					field_tuple = model._meta.get_field_by_name(rel)
-
 					# local field on this model
 					if field_tuple[2] and (\
 							isinstance(field_tuple[0],fields.related.OneToOneField) or \
 							isinstance(field_tuple[0],fields.related.ForeignKey)):
 						model = field_tuple[0].rel.to
 						continue
-		
+
 					# related field on another model
 					if not field_tuple[2] and isinstance(field_tuple[0].field,fields.related.OneToOneField):
 						model = field_tuple[0].model
 						continue 
-			
+
 					# if our loop ever reaches this point, that means it failed the above checks and errors are present
-					errors = True
-				
+					raise forms.ValidationError("Many %ss are linked from %s. Please filter on %s." % (rel, model._meta.verbose_name, rel))
+
 				""" Reporting Field Check """	
 				## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
 				if not [True for filter_field in self.cleaned_data.get('filter_fields') \
 							if set(split_relation).issubset(set(filter_field.split("__")[:-1]))] and errors:
-				
+
 					filtering_field = f.split('__')[0]
 					if len(f.split('__')) > 1:
 						filtering_field = f.split('__')[-2] # we want the last module, not the field
 
 					raise forms.ValidationError("Cannot display the field '%s' without also filtering on %s." \
 							% (' :: '.join(f.split('__')),filtering_field) )
+
 		return self.cleaned_data
 
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
