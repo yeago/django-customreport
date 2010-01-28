@@ -41,6 +41,26 @@ class CustomFilterSet(JoinsafeFilterSet): # See notes about this in filters.py
                 'extra': lambda f: {'choices': f.choices, }
             },
     }
+    class Meta:
+        model = Customer
+        fields = ['race',
+            'location',
+            'household_annual_income',
+            'gender',
+            'address__zip_link__counties',
+            'employment_status',
+            'household_type',
+            'entry_date',
+            'closure_date',
+            'is_veteran',
+            'status',
+            'goals__type',
+            'goals__service__type',
+            'contact__program',
+            'contact__date',
+            'consumertag__tag',
+            'address__zip',]
+
 """
 views.py
 """
