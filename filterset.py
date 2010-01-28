@@ -30,10 +30,9 @@ class JoinsafeFilterSet(FilterSet):
 		qs = super(JoinsafeFilterSet,self).qs
 
 		new_table_map = copy.deepcopy(qs.query.table_map)
-
 		redux_table_map = {}
-		
 		removed_tables = {} 
+		
 		for table_name, tables in new_table_map.iteritems():
 			if table_name in original_table_map:
 				if len(tables) > len(original_table_map[table_name]):
@@ -67,7 +66,5 @@ class JoinsafeFilterSet(FilterSet):
 		for key, value in removed_tables.iteritems():
 			qs.query.unref_alias(key)
 
-
 		qs.query.where.relabel_aliases(removed_tables)
-
 		return qs
