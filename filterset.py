@@ -32,7 +32,7 @@ class JoinsafeFilterSet(FilterSet):
 		new_table_map = copy.deepcopy(qs.query.table_map)
 		redux_table_map = {}
 		removed_tables = {} 
-		
+
 		for table_name, tables in new_table_map.iteritems():
 			if table_name in original_table_map:
 				if len(tables) > len(original_table_map[table_name]):
@@ -47,7 +47,7 @@ class JoinsafeFilterSet(FilterSet):
 
 			for i in tables:
 				if not i in redux_table_map[table_name]:
-					removed_tables[i] = new_table_map[table_name][-1]
+					removed_tables[i] = table_name #new_table_map[table_name][-1]
 
 		redux_join_map = {}
 
