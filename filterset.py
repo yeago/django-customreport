@@ -50,7 +50,8 @@ class JoinsafeFilterSet(FilterSet):
 					if not i in removed_tables:
 						removed_tables[i] = []
 						qs.query.unref_alias(i)
-					removed_tables[i].append(table_name)
+
+					removed_tables[i].append(redux_table_map[table_name][-1])
 
 		redux_join_map = {}
 
@@ -72,7 +73,7 @@ class JoinsafeFilterSet(FilterSet):
 		qs.query.table_map = redux_table_map
 		#qs.query.join_map = redux_join_map
 		qs.query.alias_map = redux_alias_map
-			
+		
 		for key, value in removed_tables.iteritems():
 			for v in value:
 				qs.query.where.relabel_aliases({key: v})
