@@ -1,0 +1,104 @@
+"""
+**Usage**
+
+Honestly, this project was developed entwined with Alex Gaynor's django-filters and 
+django_displayset, but I have organized it so that it doesn't necessarily depend on
+the others.
+
+Basically, if you provide a queryset or a model, this project will give you a "pre-form"
+with two fields:
+
+* filter fields - Fields on your form (probably a django-filters filterset form) which
+your users can narrow down
+
+* display fields - Fields on your model (and related objects) which your user can
+display in a grid, which uses the results of the filtering above. 
+
+"""
+
+"""
+forms.py - the filterset
+"""
+
+class CustomFilterSet(JoinsafeFilterSet): # See notes about this in filters.py
+    address__zip = CommaFilter(label="Zip")
+    disability = DisabilityFilter(queryset=bm.Disability.objects.all(),label="Disability")
+    filter_overrides =  {
+            models.DateField: {
+                'filter_class': bfilters.DateSpecificRangeFilter
+            },
+            models.PositiveIntegerField:{
+                'filter_class': django_filters.RangeFilter
+            },
+            models.ForeignKey : {
+                'filter_class': django_filters.ModelMultipleChoiceFilter,
+                'extra': lambda f: {
+                    'queryset': f.rel.to._default_manager.complex_filter(f.rel.limit_choices_to),
+                    'to_field_name': f.rel.field_name, }
+            },
+            models.CharField : {
+                'filter_class': django_filters.MultipleChoiceFilter,
+                'extra': lambda f: {'choices': f.choices, }
+            },
+    }
+    class Meta:
+        model = Customer
+        fields = ['race',
+            'location',
+            'household_annual_income',
+            'gender',
+            'address__zip_link__counties',
+            'employment_status',
+            'household_type',
+            'entry_date',
+            'closure_date',
+            'is_veteran',
+            'status',
+            'goals__type',
+            'goals__service__type',
+            'contact__program',
+            'contact__date',
+            'consumertag__tag',
+            'address__zip',]
+
+"""
+views.py
+"""
+def custom(request,filterset_class=CustomFilterSet):
+	exclusions = [
+		'address__zip__contact',
+		'address__ir',
+		'address__provider',
+		'address__volunteer',
+		'address__interpreterprofile',
+		'address__contact',
+		'address__emergencycontact',
+		'followup',
+		'staff__*',
+		'filereview__user__*',
+		'disability_primary__*',
+		'disability_secondary__*',
+		'location__*',
+		'transfer__staff__*',
+		'transfer__from_staff__*',
+		'transfer__to_staff__*',
+		'files__*',
+		'emergency_contact_primary__address__*',
+		'emergency_contact_secondary__address__*',
+		'contact__staff__*',
+		'contact__program__*',
+		'goals__staff__*',
+		'goals__type__*',
+		'goals__service__*',
+		'goals__outcome__*',
+		'referral__refer_from__*',
+		'referral__refer_to__*',
+	]
+
+	# The DisplaySet expected below is a http://github.com/subsume/django-displayset
+	# Essentialy, its a ModelAdmin like object used for displaying like django-admin
+
+    return customer_displayset_view(filterset_class,CustomerDisplaySet,request,exclusions=exclusions,depth=3,\
+            template_name="customer/reports/custom.html",\
+            queryset=cmodels.Customer.objects.all().annotate(Max('contact__date')))
+
