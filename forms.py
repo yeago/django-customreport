@@ -49,10 +49,10 @@ class BaseCustomPreForm(forms.Form):
 					if not field_tuple[2] and isinstance(field_tuple[0].field,fields.related.OneToOneField):
 						model = field_tuple[0].model
 						continue 
-			
+
 					# if our loop ever reaches this point, that means it failed the above checks and errors are present
 					errors = True
-				
+					break
 				""" Reporting Field Check """	
 				## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
 				if not [True for filter_field in self.cleaned_data.get('filter_fields') \
