@@ -153,15 +153,15 @@ class custom_view(object):
 		form.fields['display_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in display_fields],required=False)
 		form.fields['filter_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in filter_fields])
 
-		form.initial['display_fields'] = self.request.GET['display_fields'] # hacky...
-		form.initial['filter_fields'] = self.request.GET['filter_fields'] # hacky, breaks with pre. todo.
+		form.initial['display_fields'] = self.request.GET.get('display_fields', None) # hacky...
+		form.initial['filter_fields'] = self.request.GET.get('filter_fields', None) # hacky, breaks with pre. todo.
 
 		if 'custom_token' in self.request.GET and form.is_valid():
 			queryset = self.queryset
 			from django.db.models.query import QuerySet
 			if not isinstance(self.queryset,QuerySet): # it was passed in above
 				queryset = self.filter.queryset
-			return self.render_results(queryset,display_fields=display_fields + filter_fields)
+			return self.render_results(queryset,display_fields=display_fields)
 
 		return self.fallback(post_form=form,display_fields=display_fields)
 

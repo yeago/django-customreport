@@ -8,6 +8,7 @@ class BaseCustomPreForm(forms.Form):
 		self.queryset = kwargs.pop('queryset')
 		super(BaseCustomPreForm,self).__init__(*args,**kwargs)
 
+class CustomPreFormValidation(BaseCustomPreForm):
 	def clean(self):
 		"""
 		Extra Validation:
@@ -16,7 +17,6 @@ class BaseCustomPreForm(forms.Form):
 			3. check if the display field relation exists in the reporting fields
 				if any of these fail, raise a validation error.
 		"""	
-
 		if self.cleaned_data.get('display_fields') and self.cleaned_data.get('filter_fields'):
 			for f in self.cleaned_data.get('display_fields'):
 				"""
