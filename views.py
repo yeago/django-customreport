@@ -153,7 +153,7 @@ class custom_view(object):
 		form.fields['display_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in display_fields],required=False)
 		form.fields['filter_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in filter_fields])
 
-		form.initial['display_fields'] = self.request.GET.get('display_fields') # hacky...
+		form.initial['display_fields'] = self.request.GET['display_fields'] # hacky...
 		form.initial['filter_fields'] = self.request.GET['filter_fields'] # hacky, breaks with pre. todo.
 
 		if 'custom_token' in self.request.GET and form.is_valid():
