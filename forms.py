@@ -1,3 +1,4 @@
+import copy
 from django import forms
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db.models import fields
@@ -68,11 +69,62 @@ class CustomPreFormValidation(BaseCustomPreForm):
 
 		return self.cleaned_data
 
+def filter_choices(choices,queryset,filter_fields):
+	unfiltered_choices = [f[0] for f in choices]
+	indices_to_remove = []
+	for x,f in enumerate(unfiltered_choices):
+		errors = False
+
+		""" Aggregate Check """
+		if isinstance(queryset,QuerySet) and (f in queryset.query.aggregates or f in queryset.query.extra):
+			continue # Its directly on the qs already. skip the rest of this error checking
+
+		""" Forward Relation Check """
+		model = None	
+		split_relation = f.split('__')[:-1] # we don't want the field it is accessing, so use [:-1]
+		model = queryset.model
+		for rel in split_relation:
+			# get_field_by_name returns a 4-tuple, 3rd index (2) relates to local fields, 1st index to the field/relation
+			field_tuple = model._meta.get_field_by_name(rel)
+			# local field on this model
+			if field_tuple[2] and (\
+					isinstance(field_tuple[0],fields.related.OneToOneField) or \
+					isinstance(field_tuple[0],fields.related.ForeignKey)):
+				model = field_tuple[0].rel.to
+				continue
+
+			# related field on another model
+			if not field_tuple[2] and isinstance(field_tuple[0].field,fields.related.OneToOneField):
+				model = field_tuple[0].model
+				continue 
+
+			# if our loop ever reaches this point, that means it failed the above checks and errors MAY be present
+			errors = True
+			break
+
+		""" Reporting Field Check """	
+		## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
+		if not [True for filter_field in filter_fields \
+					if set(split_relation).issubset(set(filter_field.split("__")[:-1]))] and errors:
+
+			indices_to_remove.append(x)
+
+	for offset, index in enumerate(indices_to_remove):
+		index -= offset
+		del choices[index]
+
+	return choices
+	
+
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
-	def __init__(self,queryset,depth=3,inclusions=None,exclusions=None,*args,**kwargs):
+	def __init__(self,queryset,depth=3,inclusions=None,exclusions=None,filter_fields=None,*args,**kwargs):
 		from django_customreport.helpers import display_list
+		filter_fields = filter_fields or []
+		unfiltered_choices = display_list(queryset,depth=depth,inclusions=inclusions,exclusions=exclusions)
+		choices = filter_choices(unfiltered_choices,queryset,filter_fields)
+
 		kwargs.update({
-			'choices': display_list(queryset,depth=depth,inclusions=inclusions,exclusions=exclusions),
+			'choices': choices,
 			'widget': FilteredSelectMultiple("display_fields", is_stacked=False)
 		})
 		super(RelationMultipleChoiceField,self).__init__(*args,**kwargs)
@@ -102,6 +154,3 @@ class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which acc
 		self.fields['filter_fields'] = forms.MultipleChoiceField(choices=filter_choices,\
 				widget=FilteredSelectMultiple("filter_fields", is_stacked=False))
 
-		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=\
-				self._filter.queryset,depth=self._depth,exclusions=self._exclusions,\
-				inclusions=self._inclusions,required=False,label="Additional display fields")
