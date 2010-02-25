@@ -71,7 +71,7 @@ class JoinsafeFilterSet(FilterSet):
 				redux_alias_map[k] = (v[0],v[1],v[2],removed_tables[v[3]][0],v[4],v[5],v[6])
 
 		qs.query.table_map = redux_table_map
-		#qs.query.join_map = redux_join_map
+		qs.query.join_map = redux_join_map
 		qs.query.alias_map = redux_alias_map
 		
 		for key, value in removed_tables.iteritems():

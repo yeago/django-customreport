@@ -45,7 +45,7 @@ def results_view(queryset,display_fields=None):
 
 			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
 			join_table = join_model._meta.db_table
-		
+	
 			try:
 				join_table = queryset.query.table_map[join_table][-1]
 				queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
