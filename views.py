@@ -3,6 +3,7 @@ from django.template import RequestContext
 from django.shortcuts import render_to_response
 
 from django_customreport.helpers import get_closest_relation, CustomReportDisplaySet
+from django_customreport.forms import RelationMultipleChoiceField
 	
 def results_view(queryset,display_fields=None):
 	"""
@@ -94,10 +95,9 @@ class custom_view(object):
 			if not 'custom_token' in request.GET:
 				pre_form = cls.get_pre_form(request)
 				if pre_form.is_valid():
-					return cls.render_post_form(display_fields=pre_form.cleaned_data['display_fields'],\
-							filter_fields=pre_form.cleaned_data['filter_fields'])
+					return cls.render_post_form(filter_fields=pre_form.cleaned_data['filter_fields'])
 			else:
-				return cls.render_post_form(display_fields=request.GET.get('display_fields'),filter_fields=request.GET.get('filter_fields'))
+				return cls.render_post_form(filter_fields=request.GET.get('filter_fields'))
 
 		return cls.fallback(pre_form=pre_form)
 
@@ -125,45 +125,38 @@ class custom_view(object):
 
 		return self.pre_form
 
-	def fallback(self,pre_form=None,post_form=None,display_fields=None):
-		display_fields = display_fields or []
-		c = {'pre_form': pre_form, 'post_form': post_form, 'display_fields': display_fields,\
+	def fallback(self,pre_form=None,post_form=None):
+		c = {'pre_form': pre_form, 'post_form': post_form,\
 				'custom_token': self.request.GET.get('custom_token',False) }
 
 		c.update(self.extra_context or {})
 		return render_to_response(self.template_name, c, context_instance=RequestContext(self.request))
 
-	def render_post_form(self,display_fields=None,filter_fields=None):
-		display_fields = display_fields or []
+	def render_post_form(self,filter_fields=None):
 		filter_fields = filter_fields or []
 
 		form = self.get_post_form()
 
-		display_fields = self.request.GET.getlist('display_fields')	
 		filter_fields = self.request.GET.getlist('filter_fields')	
 
 		kept_fields = form.fields.copy()
 		for i in form.fields:
-			if not i in filter_fields:
+			if not i in filter_fields and i != 'display_fields':
 				del kept_fields[i]
-
 		form.fields = kept_fields
 	
 		from django import forms
-		form.fields['display_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in display_fields],required=False)
 		form.fields['filter_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in filter_fields])
-
-		form.initial['display_fields'] = self.request.GET.get('display_fields') # hacky...
-		form.initial['filter_fields'] = self.request.GET['filter_fields'] # hacky, breaks with pre. todo.
+		form.initial['filter_fields'] = self.request.GET.get('filter_fields', None) # hacky, breaks with pre. todo.
 
 		if 'custom_token' in self.request.GET and form.is_valid():
 			queryset = self.queryset
 			from django.db.models.query import QuerySet
 			if not isinstance(self.queryset,QuerySet): # it was passed in above
 				queryset = self.filter.queryset
-			return self.render_results(queryset,display_fields=display_fields + filter_fields)
+			return self.render_results(queryset,display_fields=form.cleaned_data['display_fields'])
 
-		return self.fallback(post_form=form,display_fields=display_fields)
+		return self.fallback(post_form=form)
 
 	def render_results(self,queryset,display_fields=None):
 		return results_view(queryset,display_fields=display_fields)
@@ -186,18 +179,24 @@ class displayset_view(custom_view):
 	3) change_list_template - this is the template used above
 
 	"""
-	def __call__(cls, filter_class, displayset_class, request, queryset=None,exclusions=None,depth=None,*args, **kwargs):
+	def __call__(cls, filter_class, displayset_class, request, queryset=None,exclusions=None,inclusions=None,depth=None,*args, **kwargs):
 		cls.filter_class = filter_class
 		cls.filter = filter_class(request.GET or None,queryset=queryset)
 		cls.exclusions = exclusions
 		cls.depth = depth
+		cls.inclusions = inclusions
 		cls.displayset_class = displayset_class
 		kwargs['extra_context'] = kwargs['extra_context'] or {}
 		kwargs['extra_context'].update({'filter': cls.filter})
 		return custom_view.__call__(cls,request,queryset=queryset,*args,**kwargs)
 
 	def get_post_form(self):
-		return self.filter.form
+		form = self.filter.form
+		form.fields['display_fields'] = RelationMultipleChoiceField(queryset=\
+				self.filter.queryset,depth=self.depth,exclusions=self.exclusions,\
+				inclusions=self.inclusions,filter_fields=self.request.GET.getlist('filter_fields'),\
+				required=False,label="Additional display fields")
+		return form
 
 	def get_pre_form(self,request):
 		from django_customreport.forms import FilterSetCustomPreForm
