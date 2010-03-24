@@ -39,16 +39,21 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 		return None
 
 	def get_link_func(self):
+		description = self.get_link_description()
+		if not description: # honestly, if we don't have a description header, no reason to continue
+			return None
+
 		def link_name(record):
 			return "<a href='%s'>%s</a>" % (record.get_absolute_url(), record) 
 		link_name.admin_order_field = self.get_link_order()
 		link_name.allow_tags = True
-		link_name.short_description = self.get_link_description()
+		link_name.short_description = description
 		return link_name
 	
 	def get_display_funcs(self):
 		list_display = self.initial_field_funcs()
-		list_display.insert(0, self.get_link_func())
+		if self.get_link_func():
+			list_display.insert(0, self.get_link_func())
 		return list_display
 		
 def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,depth=None,\
