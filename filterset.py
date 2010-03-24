@@ -28,22 +28,30 @@ class JoinsafeFilterSet(FilterSet):
 		original_table_map = copy.deepcopy(self.queryset.query.table_map)
 
 		qs = super(JoinsafeFilterSet,self).qs
-
-		new_table_map = copy.deepcopy(qs.query.table_map)
+		
 		redux_table_map = {}
 		removed_tables = {} 
 
-		for table_name, tables in new_table_map.iteritems():
+		"""
+		We cycle through the table map as it came out of the FilterSet
+		"""
+		for table_name, tables in qs.query.table_map.iteritems():
 			if table_name in original_table_map:
+				redux_table_map[table_name] = tables # default, override next if necc.
+				"""
+				if it exists in the original table map, we check to see if
+				it created an additional join. If it did, we only allow it to create
+				one more join. We always use the last join.
+				"""
 				if len(tables) > len(original_table_map[table_name]):
 					redux_table_map[table_name] = original_table_map[table_name]
 					redux_table_map[table_name].append(tables[-1])
 
-				else:
-					redux_table_map[table_name] = tables
-
 			else:
-				redux_table_map[table_name] = [tables[0]]
+				"""
+				If it didn't exist, we keep only one of the joins it created
+				"""
+				redux_table_map[table_name] = [tables[-1]]
 
 			for i in tables:
 				if not i in redux_table_map[table_name]:
@@ -51,7 +59,9 @@ class JoinsafeFilterSet(FilterSet):
 						removed_tables[i] = []
 						qs.query.unref_alias(i)
 
-					removed_tables[i].append(redux_table_map[table_name][-1])
+					new_alias = redux_table_map[table_name][-1]
+					removed_tables[i].append(new_alias)
+					qs.query.where.relabel_aliases({i: new_alias})
 
 		redux_join_map = {}
 
@@ -73,9 +83,4 @@ class JoinsafeFilterSet(FilterSet):
 		qs.query.table_map = redux_table_map
 		qs.query.join_map = redux_join_map
 		qs.query.alias_map = redux_alias_map
-		
-		for key, value in removed_tables.iteritems():
-			for v in value:
-				qs.query.where.relabel_aliases({key: v})
-
 		return qs

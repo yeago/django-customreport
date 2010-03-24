@@ -144,13 +144,15 @@ class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which acc
 	def update_field_labels(self):
 		filter_choices = []
 		for field in self._filter.base_filters.keys():
-			key = field
-			value = ' :: '.join(field.split('__'))
+			value = field
+			if '__' in field:
+				value = ' :: '.join(field.split('__')[-2:])
 			value = ' '.join(value.split('_'))
-			field_tuple = (key, '%s :: %s' % (self.queryset.model._meta.module_name,value))
-			filter_choices.append(field_tuple)
+			filter_choices.append((field,value.title()))
 
-		filter_choices.sort(lambda x,y : cmp(x,y))
+		import operator
+		filter_choices = sorted(filter_choices, key=operator.itemgetter(1))
+
 		self.fields['filter_fields'] = forms.MultipleChoiceField(choices=filter_choices,\
 				widget=FilteredSelectMultiple("filter_fields", is_stacked=False))
 

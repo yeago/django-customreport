@@ -34,6 +34,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 	""" hook for setting the links header name """
 	def get_link_description(self):
 		return 'Link'
+	
 	def get_link_order(self):
 		return None
 
@@ -143,7 +144,6 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 	# so taking consumer... it will do consumer->address->zip and then it will do consumer->emergency_contact and
 	# then whatever backward relations
 	for relation in relations:
-	
 		# prepare the inclusion/exclusion for the next recursive call by chopping off all relations that match the one in our loop
 		relation_inclusions = [name.split(LOOKUP_SEP, 1)[1] for name in inclusions if LOOKUP_SEP in name and name.split(LOOKUP_SEP,1)[0] == relation[1]] 
 		relation_exclusions = [name.split(LOOKUP_SEP, 1)[1] for name in exclusions if LOOKUP_SEP in name and name.split(LOOKUP_SEP,1)[0] == relation[1]]
