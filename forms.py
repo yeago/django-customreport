@@ -105,7 +105,7 @@ def filter_choices(choices,queryset,filter_fields):
 		""" Reporting Field Check """	
 		## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
 		if not [True for filter_field in filter_fields \
-					if set(split_relation).issubset(set(filter_field.split("__")[:-1]))] and errors:
+					if set(split_relation[:-1]).issubset(set(filter_field.split("__")[:-1]))] and errors:
 
 			indices_to_remove.append(x)
 

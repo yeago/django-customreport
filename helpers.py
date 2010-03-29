@@ -172,7 +172,6 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 		###
 		# We check if _model_class != query_class because we have a case here where once we hit the top of the tree, 
 		# then we don't want to append the query_class to the module-relation
-
 		if _model_class != query_class:
 			_relation_list.extend([
 				(LOOKUP_SEP.join([relation[1], relation_pair[0]]),
