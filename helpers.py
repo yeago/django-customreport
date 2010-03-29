@@ -12,7 +12,13 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 
 	def initial_field_funcs(self):
 		def display_field_def(field_name):	
-			return lambda obj: getattr(obj,field_name)
+			b = lambda obj: getattr(obj,field_name)
+			name = field_name.split("__")
+			if len(name) > 1:
+				name = ' '.join(name[-2:])
+			else: name = name[0]
+			b.short_description = name
+			return b
 
 		### The function below returns another function, which is used to grab from the result a specific attribute name.
 		## These function returned are the same as the function that would be set in the above class CustomReportDisplaySet
@@ -172,7 +178,6 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 		###
 		# We check if _model_class != query_class because we have a case here where once we hit the top of the tree, 
 		# then we don't want to append the query_class to the module-relation
-
 		if _model_class != query_class:
 			_relation_list.extend([
 				(LOOKUP_SEP.join([relation[1], relation_pair[0]]),
