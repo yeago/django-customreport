@@ -18,6 +18,7 @@ def results_view(queryset,display_fields=None):
 	display_fields = display_fields or []
 	extra_select_kwargs = {}
 	select_related = []
+	used_routes = []
 	for i in display_fields:
 		if i in queryset.query.aggregates or i in queryset.query.extra:
 			continue # Want below check to work only for relations, excluding aggregates. 
@@ -46,7 +47,7 @@ def results_view(queryset,display_fields=None):
 
 			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
 			join_table = join_model._meta.db_table
-	
+
 			try:
 				join_table = queryset.query.table_map[join_table][-1]
 				queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
@@ -60,7 +61,9 @@ def results_view(queryset,display_fields=None):
 
 				for now we just need the join column between the primary table and the join table.
 				"""
+
 				join_table = join_model._meta.db_table
+					
 				for field_name in primary_model._meta.get_all_field_names():
 					from django.db import models
 					try:
@@ -69,14 +72,24 @@ def results_view(queryset,display_fields=None):
 								field.rel.to == join_model:
 
 							whereclause = '%s.id=%s.%s' % (join_table,primary_table,field.column)
-							queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},tables=[join_table],where=[whereclause])
+							if not join_table in used_routes:
+								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},\
+										tables=[join_table],where=[whereclause])
+
+							else:
+								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},where=[whereclause])
 
 					except models.FieldDoesNotExist:
 						pass
+					
+				if not join_table in used_routes:
+					used_routes.append(join_table)
 
-		select_related.append(select_related_token)
+		if not select_related_token in select_related:
+			select_related.append(select_related_token)
 
 	queryset = queryset.select_related(*select_related)
+
 	return queryset
 
 class custom_view(object):
