@@ -143,7 +143,7 @@ class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which acc
 
 	def update_field_labels(self):
 		filter_choices = []
-		for field in self._filter.base_filters.keys():
+		for field, obj in self._filter.base_filters.iteritems():
 			value = field
 			if '__' in field:
 				value = ' :: '.join(field.split('__')[-2:])
