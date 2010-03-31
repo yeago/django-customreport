@@ -5,6 +5,7 @@ from django_displayset import views as displayset_views
 
 class CustomReportDisplaySet(displayset_views.DisplaySet):
 	list_display = []
+	auto_link = False
 	change_list_template = 'customreport/base.html'
 	def __init__(self,*args,**kwargs):
 		self.list_display = self.get_display_funcs()
@@ -39,7 +40,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 	
 	""" hook for setting the links header name """
 	def get_link_description(self):
-		return 'Link'
+		return ''
 	
 	def get_link_order(self):
 		return None
@@ -47,7 +48,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 	def get_link_func(self):
 		description = self.get_link_description()
 		if not description: # honestly, if we don't have a description header, no reason to continue
-			return None
+			return "no 'get_link_description' set"
 
 		def link_name(record):
 			return "<a href='%s'>%s</a>" % (record.get_absolute_url(), record) 
@@ -58,7 +59,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 	
 	def get_display_funcs(self):
 		list_display = self.initial_field_funcs()
-		if self.get_link_func():
+		if self.auto_link:
 			list_display.insert(0, self.get_link_func())
 		return list_display
 		
