@@ -10,12 +10,13 @@ class JoinsafeFilterSet(FilterSet):
 	Essentially we stitch together all querying done in the filterset so that
 	filtering produces no more than 1 join per table. This translates to distant
 	relations being filtered together and correcting the paradox of filtering
-	on 
-	People(address_city='Miami')
+	on:
+	
+	people = People.filter(address__city_name='Miami')
 
-	and
+	and:
 
-	People(address_city__zip='90210')
+	people.filter(address__city_zip='90210')
 
 	And ending up with Californians and Floridians.
 
@@ -45,7 +46,7 @@ class JoinsafeFilterSet(FilterSet):
 				"""
 				if len(tables) > len(original_table_map[table_name]):
 					redux_table_map[table_name] = original_table_map[table_name]
-					redux_table_map[table_name].append(tables[-1])
+					#redux_table_map[table_name].append(tables[-1])
 
 			else:
 				"""

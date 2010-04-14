@@ -32,31 +32,15 @@ class CustomPreFormValidation(BaseCustomPreForm):
 					continue # Its directly on the qs already. skip the rest of this error checking
 
 				""" Forward Relation Check """
-				model = None	
-				split_relation = f.split('__')[:-1] # we don't want the field it is accessing, so use [:-1]
-				model = self.queryset.model
-				for rel in split_relation:
-					# get_field_by_name returns a 4-tuple, 3rd index (2) relates to local fields, 1st index to the field/relation
-					field_tuple = model._meta.get_field_by_name(rel)
-					# local field on this model
-					if field_tuple[2] and (\
-							isinstance(field_tuple[0],fields.related.OneToOneField) or \
-							isinstance(field_tuple[0],fields.related.ForeignKey)):
-						model = field_tuple[0].rel.to
-						continue
-
-					# related field on another model
-					if not field_tuple[2] and isinstance(field_tuple[0].field,fields.related.OneToOneField):
-						model = field_tuple[0].model
-						continue 
-
-					# if our loop ever reaches this point, that means it failed the above checks and errors MAY be present
+				if is_reverse_related(f,self.queryset.model):
 					errors = True
 					break
+					# if our loop ever reaches this point, that means it failed the above checks and errors MAY be present
 					#raise forms.ValidationError("Many %ss are linked from %s. Please filter on %s." % (rel, model._meta.verbose_name, rel))
 
 				""" Reporting Field Check """	
 				## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
+				split_relation = field.split('__')[:-1] # we don't want the field it is accessing, so use [:-1]
 				if not [True for filter_field in self.cleaned_data.get('filter_fields') \
 							if set(split_relation).issubset(set(filter_field.split("__")[:-1]))] and errors:
 
@@ -155,4 +139,3 @@ class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which acc
 
 		self.fields['filter_fields'] = forms.MultipleChoiceField(choices=filter_choices,\
 				widget=FilteredSelectMultiple("filter_fields", is_stacked=False))
-

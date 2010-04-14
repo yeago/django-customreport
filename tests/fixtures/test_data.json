@@ -1,0 +1,127 @@
+[
+	{
+		"pk": 1,
+		"model": "tests.Person",
+		"fields": {
+			"name": "First"
+		}
+	},
+	{
+		"pk": 2,
+		"model": "tests.Person",
+		"fields": {
+			"name": "Second"
+		}
+	},
+	{
+		"pk": 3,
+		"model": "tests.Person",
+		"fields": {
+			"name": "Third"
+		}
+	},
+	{
+		"pk": 4,
+		"model": "tests.Person",
+		"fields": {
+			"name": "Fourth"
+		}
+	},
+	{
+		"pk": 5,
+		"model": "tests.Person",
+		"fields": {
+			"name": "Fifth"
+		}
+	},
+	{
+		"pk": 1,
+		"model": "tests.Location",
+		"fields": {
+			"person": 1,
+			"zip_code": 32801,
+			"open_saturday": 1
+		}
+	},
+	{
+		"pk": 1,
+		"model": "tests.Location",
+		"fields": {
+			"person": 1,
+			"zip_code": 90210,
+			"open_saturday": 0
+		}
+	},
+	{
+		"pk": 1,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 1,
+			"date": "2009-01-01",
+			"hours": 1
+		}
+	},
+	{
+		"pk": 2,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 1,
+			"date": "2010-01-01",
+			"hours": 1
+		}
+	},
+	{
+		"pk": 3,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 2,
+			"date": "2009-01-01",
+			"hours": 2
+		}
+	},
+	{
+		"pk": 4,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 2,
+			"date": "2010-01-01",
+			"hours": 3
+		}
+	},
+	{
+		"pk": 5,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 3,
+			"date": "2009-01-01",
+			"hours": 5 
+		}
+	},
+	{
+		"pk": 6,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 3,
+			"date": "2010-01-01",
+			"hours": 8 
+		}
+	},
+	{
+		"pk": 7,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 4,
+			"date": "2009-01-01",
+			"hours": 13 
+		}
+	},
+	{
+		"pk": 8,
+		"model": "tests.Contact",
+		"fields": {
+			"person": 4,
+			"date": "2009-01-01",
+			"hours": 21 
+		}
+	}
+]

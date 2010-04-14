@@ -2,95 +2,8 @@ from django.db.models.sql.constants import LOOKUP_SEP
 from django.template import RequestContext
 from django.shortcuts import render_to_response
 
-from django_customreport.helpers import get_closest_relation, CustomReportDisplaySet
+from django_customreport.helpers import get_closest_relation, CustomReportDisplaySet, process_queryset
 from django_customreport.forms import RelationMultipleChoiceField
-	
-def results_view(queryset,display_fields=None):
-	"""
-	This is used in the custom_view below, but its de-coupled so it can be used
-	programatically as well. Simply pass in a queryset and a list of relations to display
-	and viola.
-	
-	Relations look like: ['address__zip','contact__date']
-
-	"""
-
-	display_fields = display_fields or []
-	extra_select_kwargs = {}
-	select_related = []
-	used_routes = []
-	for i in display_fields:
-		if i in queryset.query.aggregates or i in queryset.query.extra:
-			continue # Want below check to work only for relations, excluding aggregates. 
-
-		select_related_token = i
-		if LOOKUP_SEP in i:
-			"""
-			Since select_related() is rather flexible about what it receives
-			(ignoring things it doesn't like), we'll just haphazardly pass 
-			all filter and display fields in for now.
-			"""
-			select_related_token = i.split(LOOKUP_SEP)
-			select_related_token.pop() # get rid of the field name
-			select_related_token = LOOKUP_SEP.join(select_related_token)
-
-			primary_model = queryset.model
-			join_route = i
-			if len(i.split(LOOKUP_SEP)) > 2:
-				second_to_last = LOOKUP_SEP.join(i.split(LOOKUP_SEP)[0:-1])
-				join_route = LOOKUP_SEP.join(i.split(LOOKUP_SEP)[-2:])
-				primary_model = get_closest_relation(queryset.model,second_to_last)[0]
-
-			primary_table = primary_model._meta.db_table
-			if primary_table in queryset.query.table_map:
-				primary_table = queryset.query.table_map[primary_table][-1] # Will the last one always work?
-
-			join_model, join_field, join_name = get_closest_relation(primary_model,join_route)
-			join_table = join_model._meta.db_table
-
-			try:
-				join_table = queryset.query.table_map[join_table][-1]
-				queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)})
-			except KeyError:
-				"""
-				Design decision. This will work fine if the ModelAdmin does the displaying of
-				related objects for us. At this time, Django doesn't. We have a patch in place
-				but aren't using it.
-
-				For now... at this point we know validation has barred all but forward or one-to-ones.
-
-				for now we just need the join column between the primary table and the join table.
-				"""
-
-				join_table = join_model._meta.db_table
-					
-				for field_name in primary_model._meta.get_all_field_names():
-					from django.db import models
-					try:
-						field = primary_model._meta.get_field(field_name)
-						if (isinstance(field,models.OneToOneField) or isinstance(field,models.ForeignKey)) and \
-								field.rel.to == join_model:
-
-							whereclause = '%s.id=%s.%s' % (join_table,primary_table,field.column)
-							if not join_table in used_routes:
-								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},\
-										tables=[join_table],where=[whereclause])
-
-							else:
-								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},where=[whereclause])
-
-					except models.FieldDoesNotExist:
-						pass
-					
-				if not join_table in used_routes:
-					used_routes.append(join_table)
-
-		if not select_related_token in select_related:
-			select_related.append(select_related_token)
-
-	queryset = queryset.select_related(*select_related)
-
-	return queryset
 
 class custom_view(object):
 	def __new__(cls, request, *args, **kwargs):
@@ -172,7 +85,7 @@ class custom_view(object):
 		return self.fallback(post_form=form)
 
 	def render_results(self,queryset,display_fields=None):
-		return results_view(queryset,display_fields=display_fields)
+		return process_queryset(queryset,display_fields=display_fields)
 
 class displayset_view(custom_view):
 	"""
@@ -224,11 +137,12 @@ class displayset_view(custom_view):
 		self.filter.filters = kept_filters
 		return super(displayset_view,self).render_post_form(**kwargs)
 
-	def render_results(self,queryset,display_fields=None):
+	def get_results(self,queryset,display_fields=None):
 		filter = self.filter_class(self.request.GET,queryset=queryset)
-		queryset = super(displayset_view,self).render_results(filter.qs,display_fields=display_fields)
-		filter.get_parameters = {}
+		return super(displayset_view,self).render_results(filter.qs,display_fields=display_fields)
 		
+	def render_results(self,queryset,display_fields=None):
+		queryset = self.get_results(queryset,display_fields=display_fields)
 		self.displayset_class.display_fields = display_fields
 		from django_displayset import views as displayset_views
 		return displayset_views.generic(self.request,queryset,self.displayset_class,\
