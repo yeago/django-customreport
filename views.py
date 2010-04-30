@@ -42,11 +42,12 @@ class custom_view(object):
 		"""
 		Meant to be overridden.
 
-		A pre-form has two required fields: 'display_fields' and 'filter_fields'.
+		A pre-form tends to have one field: a list of total options the user has to report.
 
-		They are meant to be MultipleChoiceFields and the result is used to modify
-		the post form. Any fields not found in the pre-form data are deleted from the
-		post form fields.
+		We then take their selections and pare-down a second form and only present
+		those they select.
+
+		It is meant to be a MultipleChoiceField
 		"""
 
 		return self.pre_form
@@ -58,16 +59,16 @@ class custom_view(object):
 		c.update(self.extra_context or {})
 		return render_to_response(self.template_name, c, context_instance=RequestContext(self.request))
 
-	def render_post_form(self,filter_fields=None):
+	def render_post_form(self,filter_fields=None,display_fields=None):
 		filter_fields = filter_fields or []
 
 		form = self.get_post_form()
 
-		filter_fields = self.request.GET.getlist('filter_fields')	
+		filter_fields = self.request.GET.getlist('filter_fields')
 
 		kept_fields = form.fields.copy()
 		for i in form.fields:
-			if not i in filter_fields and i != 'display_fields':
+			if not i in filter_fields:
 				del kept_fields[i]
 		form.fields = kept_fields
 	
@@ -80,7 +81,7 @@ class custom_view(object):
 			from django.db.models.query import QuerySet
 			if not isinstance(self.queryset,QuerySet): # it was passed in above
 				queryset = self.filter.queryset
-			return self.render_results(queryset,display_fields=form.cleaned_data['display_fields'])
+			return self.render_results(queryset,display_fields=display_fields)
 
 		return self.fallback(post_form=form)
 
@@ -105,7 +106,8 @@ class displayset_view(custom_view):
 	3) change_list_template - this is the template used above
 
 	"""
-	def __call__(cls, filter_class, displayset_class, request, queryset=None,exclusions=None,inclusions=None,depth=None,*args, **kwargs):
+	def __call__(cls, filter_class, displayset_class, request, queryset=None,\
+			exclusions=None,inclusions=None,depth=None,*args, **kwargs):
 		cls.filter_class = filter_class
 		cls.filter = filter_class(request.GET or None,queryset=queryset)
 		cls.exclusions = exclusions
@@ -116,6 +118,10 @@ class displayset_view(custom_view):
 		kwargs['extra_context'].update({'filter': cls.filter})
 		return custom_view.__call__(cls,request,queryset=queryset,*args,**kwargs)
 
+	def get_pre_form(self,request):
+		from django_customreport.forms import FilterSetCustomPreForm
+		return FilterSetCustomPreForm(self.filter,request.GET or None)
+
 	def get_post_form(self):
 		form = self.filter.form
 		form.fields['display_fields'] = RelationMultipleChoiceField(queryset=\
@@ -123,10 +129,6 @@ class displayset_view(custom_view):
 				inclusions=self.inclusions,filter_fields=self.request.GET.getlist('filter_fields'),\
 				required=False,label="Additional display fields")
 		return form
-
-	def get_pre_form(self,request):
-		from django_customreport.forms import FilterSetCustomPreForm
-		return FilterSetCustomPreForm(self.filter,request.GET or None,depth=self.depth,exclusions=self.exclusions)
 
 	def render_post_form(self,**kwargs):
 		kept_filters = self.filter.filters.copy()

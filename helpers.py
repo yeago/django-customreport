@@ -1,7 +1,57 @@
 import copy
 from django.db.models.sql.constants import LOOKUP_SEP
 from django.db.models import query
+from django.db.models.query import QuerySet
+from django.db.models import fields
+
 from django_displayset import views as displayset_views
+
+def filter_choice_generator(choices,queryset,filter_fields):
+	unfiltered_choices = [f[0] for f in choices]
+	indices_to_remove = []
+	for x,f in enumerate(unfiltered_choices):
+		errors = False
+
+		""" Aggregate Check """
+		if isinstance(queryset,QuerySet) and (f in queryset.query.aggregates or f in queryset.query.extra):
+			continue # Its directly on the qs already. skip the rest of this error checking
+
+		""" Forward Relation Check """
+		model = None	
+		split_relation = f.split('__')[:-1] # we don't want the field it is accessing, so use [:-1]
+		model = queryset.model
+		for rel in split_relation:
+			# get_field_by_name returns a 4-tuple, 3rd index (2) relates to local fields, 1st index to the field/relation
+			field_tuple = model._meta.get_field_by_name(rel)
+			# local field on this model
+			if field_tuple[2] and (\
+					isinstance(field_tuple[0],fields.related.OneToOneField) or \
+					isinstance(field_tuple[0],fields.related.ForeignKey)):
+				model = field_tuple[0].rel.to
+				continue
+
+			# related field on another model
+			if not field_tuple[2] and isinstance(field_tuple[0].field,fields.related.OneToOneField):
+				model = field_tuple[0].model
+				continue 
+
+			# if our loop ever reaches this point, that means it failed the above checks and errors MAY be present
+			errors = True
+			break
+
+		""" Reporting Field Check """	
+		## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
+		if not [True for filter_field in filter_fields \
+					if set(split_relation[:-1]).issubset(set(filter_field.split("__")[:-1]))] and errors:
+
+			indices_to_remove.append(x)
+
+	for offset, index in enumerate(indices_to_remove):
+		index -= offset
+		del choices[index]
+
+	return choices
+	
 
 def process_queryset(queryset,display_fields=None):
 	"""
@@ -140,7 +190,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 		### The function below returns another function, which is used to grab from the result a specific attribute name.
 		## These function returned are the same as the function that would be set in the above class CustomReportDisplaySet
 		## for list_display												
-		custom_report_defs = [(f, display_field_def(f)) for f in self.display_fields if not callable(f)]
+		custom_report_defs = [(f, display_field_def(f)) for f in self.display_fields or [] if not callable(f)]
 
 		## To allow the fields to be ordered, we have to set each definition with an attribute called admin_order_field
 		## as the django docs suggest
