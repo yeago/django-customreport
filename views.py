@@ -54,7 +54,8 @@ class custom_view(object):
 		from django_customreport.forms import QueryForm
 		return QueryForm(self.get_queryset(),depth=self.depth,\
 				exclusions=self.exclusions,inclusions=self.inclusions,\
-				filter_fields=self.request.GET.getlist('filter_fields'))
+				filter_fields=self.request.GET.getlist('filter_fields'),\
+				initial={'display_fields': self.request.GET.getlist('display_fields')})
 
 	def get_queryset(self):
 		"""
@@ -90,7 +91,7 @@ class custom_view(object):
 				initial=self.request.GET.getlist('filter_fields'))
 
 		if 'custom_token' in self.request.GET and form.is_valid():
-			return self.render_results(self.get_queryset(),display_fields=display_fields)
+			return self.render_results(self.get_queryset(),display_fields=self.request.GET.getlist('display_fields'))
 
 		return self.fallback(post_form=form)
 
