@@ -24,6 +24,17 @@ class RelationMultipleChoiceField(forms.MultipleChoiceField):
 		})
 		super(RelationMultipleChoiceField,self).__init__(*args,**kwargs)
 
+class QueryForm(forms.Form):
+	def __init__(self,queryset,inclusions=None,exclusions=None,depth=3,filter_fields=None,*args,**kwargs):
+		super(QueryForm,self).__init__(*args,**kwargs)
+		self.fields['filter_fields'] = forms.CharField(initial=",".join(filter_fields),\
+				widget=forms.widgets.HiddenInput)
+		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=\
+				queryset,depth=depth,exclusions=exclusions,\
+				inclusions=inclusions,filter_fields=filter_fields,\
+				required=False,label="Additional display fields")
+
+
 class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which accepts a django-filters filterset
 	def __init__(self,filter,data,exclusions=None,inclusions=None,depth=None,queryset=None):
 		self._filter = filter

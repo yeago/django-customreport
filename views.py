@@ -27,17 +27,6 @@ class custom_view(object):
 
 		return cls.fallback(pre_form=pre_form)
 
-	def get_post_form(self):
-		"""
-		Meant to be overridden.
-
-		This form is an all-inclusive form with all possible field options attached.
-		Fields not selected in the pre-form are deleted from this form and you're
-		left with a subset of the original fields.
-		"""
-
-		return self.post_form
-
 	def get_pre_form(self,request):
 		"""
 		Meant to be overridden.
@@ -49,8 +38,30 @@ class custom_view(object):
 
 		It is meant to be a MultipleChoiceField
 		"""
-
 		return self.pre_form
+
+	def get_post_form(self):
+		"""
+		Meant to be overridden.
+
+		This form is an all-inclusive form with all possible field options attached.
+		Fields not selected in the pre-form are deleted from this form and you're
+		left with a subset of the original fields.
+		"""
+		return self.post_form
+
+	def get_query_form(self):
+		from django_customreport.forms import QueryForm
+		return QueryForm(self.get_queryset(),depth=self.depth,\
+				exclusions=self.exclusions,inclusions=self.inclusions,\
+				filter_fields=self.request.GET.getlist('filter_fields'))
+
+	def get_queryset(self):
+		"""
+		Or override and use self.filter.queryset, for example
+		"""
+
+		return self.queryset
 
 	def fallback(self,pre_form=None,post_form=None):
 		c = {'pre_form': pre_form, 'post_form': post_form,\
@@ -70,22 +81,21 @@ class custom_view(object):
 		for i in form.fields:
 			if not i in filter_fields:
 				del kept_fields[i]
+				
 		form.fields = kept_fields
 	
 		from django import forms
-		form.fields['filter_fields'] = forms.MultipleChoiceField(choices=[(i,i) for i in filter_fields])
-		form.initial['filter_fields'] = self.request.GET.get('filter_fields', None) # hacky, breaks with pre. todo.
+		form.fields['filter_fields'] = forms.MultipleChoiceField(\
+				choices=[(i,i) for i in filter_fields],\
+				initial=self.request.GET.getlist('filter_fields'))
 
 		if 'custom_token' in self.request.GET and form.is_valid():
-			queryset = self.queryset
-			from django.db.models.query import QuerySet
-			if not isinstance(self.queryset,QuerySet): # it was passed in above
-				queryset = self.filter.queryset
-			return self.render_results(queryset,display_fields=display_fields)
+			return self.render_results(self.get_queryset(),display_fields=display_fields)
 
 		return self.fallback(post_form=form)
 
 	def render_results(self,queryset,display_fields=None):
+		self.extra_context.update({'query_form': self.get_query_form()})
 		return process_queryset(queryset,display_fields=display_fields)
 
 class displayset_view(custom_view):
@@ -123,12 +133,10 @@ class displayset_view(custom_view):
 		return FilterSetCustomPreForm(self.filter,request.GET or None)
 
 	def get_post_form(self):
-		form = self.filter.form
-		form.fields['display_fields'] = RelationMultipleChoiceField(queryset=\
-				self.filter.queryset,depth=self.depth,exclusions=self.exclusions,\
-				inclusions=self.inclusions,filter_fields=self.request.GET.getlist('filter_fields'),\
-				required=False,label="Additional display fields")
-		return form
+		return self.filter.form
+
+	def get_queryset(self):
+		return self.filter.queryset
 
 	def render_post_form(self,**kwargs):
 		kept_filters = self.filter.filters.copy()
@@ -146,6 +154,14 @@ class displayset_view(custom_view):
 	def render_results(self,queryset,display_fields=None):
 		queryset = self.get_results(queryset,display_fields=display_fields)
 		self.displayset_class.display_fields = display_fields
+
+		ff = {}
+		for i in self.request.GET.keys():
+			if not i in ['submit','filter_fields','custom_token']:
+				ff[i] = self.request.GET[i]
+
+		self.extra_context.update({'query_form': self.get_query_form(), 'filter_fields': ff})
+
 		from django_displayset import views as displayset_views
 		return displayset_views.generic(self.request,queryset,self.displayset_class,\
 				extra_context=self.extra_context)

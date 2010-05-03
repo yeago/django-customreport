@@ -3,16 +3,16 @@
 
 Honestly, this project was developed entwined with Alex Gaynor's django-filters and 
 django_displayset, but I have organized it so that it doesn't necessarily depend on
-the others.
+the others. This documentation, however, will assume you're using it.
 
-Basically, if you provide a queryset or a model, this project will give you a "pre-form"
-with two fields:
+Basically, if you provide a django-filter, this project will give you a "pre-form"
+which is a multi-select list of the total fields on that filter. When the user selects
+the fields they want, they get a "post-form" which is the filter.form with only those
+fields the user selected.
 
-* filter fields - Fields on your form (probably a django-filters filterset form) which
-your users can narrow down
-
-* display fields - Fields on your model (and related objects) which your user can
-display in a grid, which uses the results of the filtering above. 
+When they fill out the "post-form" they get a result-set rendered to them with a "query-form"
+which they can use to pick additional "display-fields", select fields to group by, or "modules" which
+they can use to route the queryset through some custom logic (an excel export, for example).
 
 """
 
@@ -100,5 +100,5 @@ def custom(request,filterset_class=CustomFilterSet):
 
     return customer_displayset_view(filterset_class,CustomerDisplaySet,request,exclusions=exclusions,depth=3,\
             template_name="customer/reports/custom.html",\
-            queryset=cmodels.Customer.objects.all().annotate(Max('contact__date')))
+            queryset=cmodels.Customer.objects.annotate(Max('contact__date')))
 
