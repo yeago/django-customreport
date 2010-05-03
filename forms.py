@@ -34,6 +34,9 @@ class QueryForm(forms.Form):
 				inclusions=inclusions,filter_fields=filter_fields,\
 				required=False,label="Additional display fields")
 
+		if modules:
+			self.fields['custom_modules'] = forms.CharField(choices=modules.keys(),required=False)
+
 
 class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which accepts a django-filters filterset
 	def __init__(self,filter,data,exclusions=None,inclusions=None,depth=None,queryset=None):

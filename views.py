@@ -52,7 +52,7 @@ class custom_view(object):
 
 	def get_query_form(self):
 		from django_customreport.forms import QueryForm
-		return QueryForm(self.get_queryset(),depth=self.depth,\
+		return QueryForm(self.get_queryset(),depth=self.depth,modules=self.modules,\
 				exclusions=self.exclusions,inclusions=self.inclusions,\
 				filter_fields=self.request.GET.getlist('filter_fields'),\
 				initial={'display_fields': self.request.GET.getlist('display_fields')})
@@ -95,8 +95,7 @@ class custom_view(object):
 
 		return self.fallback(post_form=form)
 
-	def render_results(self,queryset,display_fields=None):
-		self.extra_context.update({'query_form': self.get_query_form()})
+	def get_results(self,queryset,display_fields=None):
 		return process_queryset(queryset,display_fields=display_fields)
 
 class displayset_view(custom_view):
@@ -150,11 +149,15 @@ class displayset_view(custom_view):
 
 	def get_results(self,queryset,display_fields=None):
 		filter = self.filter_class(self.request.GET,queryset=queryset)
-		return super(displayset_view,self).render_results(filter.qs,display_fields=display_fields)
+		return super(displayset_view,self).get_results(filter.qs,display_fields=display_fields)
 		
-	def render_results(self,queryset,display_fields=None):
+	def render_results(self,queryset,display_fields=None,modules=None):
+		self.modules = modules or {}
 		queryset = self.get_results(queryset,display_fields=display_fields)
 		self.displayset_class.display_fields = display_fields
+
+		if self.request.GET.get('custom_module',None):
+			return modules[request.GET.get('custom_module')](self.request,queryset,extra_context=self.extra_context)
 
 		ff = {}
 		for i in self.request.GET.keys():
@@ -162,7 +165,7 @@ class displayset_view(custom_view):
 				ff[i] = self.request.GET[i]
 
 		self.extra_context.update({'query_form': self.get_query_form(), 'filter_fields': ff})
-
+		
 		from django_displayset import views as displayset_views
 		return displayset_views.generic(self.request,queryset,self.displayset_class,\
 				extra_context=self.extra_context)
