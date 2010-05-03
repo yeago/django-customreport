@@ -117,13 +117,14 @@ class displayset_view(custom_view):
 
 	"""
 	def __call__(cls, filter_class, displayset_class, request, queryset=None,\
-			exclusions=None,inclusions=None,depth=None,*args, **kwargs):
+			exclusions=None,inclusions=None,depth=None,modules=None,*args, **kwargs):
 		cls.filter_class = filter_class
 		cls.filter = filter_class(request.GET or None,queryset=queryset)
 		cls.exclusions = exclusions
 		cls.depth = depth
 		cls.inclusions = inclusions
 		cls.displayset_class = displayset_class
+		cls.modules = modules
 		kwargs['extra_context'] = kwargs['extra_context'] or {}
 		kwargs['extra_context'].update({'filter': cls.filter})
 		return custom_view.__call__(cls,request,queryset=queryset,*args,**kwargs)
@@ -151,13 +152,12 @@ class displayset_view(custom_view):
 		filter = self.filter_class(self.request.GET,queryset=queryset)
 		return super(displayset_view,self).get_results(filter.qs,display_fields=display_fields)
 		
-	def render_results(self,queryset,display_fields=None,modules=None):
-		self.modules = modules or {}
+	def render_results(self,queryset,display_fields=None):
 		queryset = self.get_results(queryset,display_fields=display_fields)
 		self.displayset_class.display_fields = display_fields
 
-		if self.request.GET.get('custom_module',None):
-			return modules[request.GET.get('custom_module')](self.request,queryset,extra_context=self.extra_context)
+		if self.request.GET.get('custom_modules',None):
+			return self.modules[self.request.GET.get('custom_modules')](self.request,queryset,extra_context=self.extra_context)
 
 		ff = {}
 		for i in self.request.GET.keys():
