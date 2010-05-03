@@ -157,7 +157,8 @@ class displayset_view(custom_view):
 		self.displayset_class.display_fields = display_fields
 
 		if self.request.GET.get('custom_modules',None):
-			return self.modules[self.request.GET.get('custom_modules')](self.request,queryset,extra_context=self.extra_context)
+			if self.modules[self.request.GET.get('custom_modules')]:
+				return self.modules[self.request.GET.get('custom_modules')](self.request,queryset,extra_context=self.extra_context)
 
 		ff = {}
 		for i in self.request.GET.keys():
