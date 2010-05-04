@@ -65,7 +65,7 @@ class JoinsafeFilterSet(FilterSet):
 				the alias map, too.
 				"""
 
-				redux_table_map[table_name] = [table[0]]
+				redux_table_map[table_name] = [tables[0]]
 
 			for i in tables:
 				if not i in redux_table_map[table_name]:
