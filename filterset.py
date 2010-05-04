@@ -25,8 +25,16 @@ class JoinsafeFilterSet(FilterSet):
 
 	@property
 	def qs(self):
+
+		"""
+		We call this here because select_related doesn't add anything to
+		table map until sql is generated. It would make all select_related
+		look like new additions to the query.
+		"""
+		self.queryset.query.get_compiler('default').as_sql()
 		import copy
 		original_table_map = copy.deepcopy(self.queryset.query.table_map)
+
 
 		qs = super(JoinsafeFilterSet,self).qs
 		
@@ -36,6 +44,7 @@ class JoinsafeFilterSet(FilterSet):
 		"""
 		We cycle through the table map as it came out of the FilterSet
 		"""
+
 		for table_name, tables in qs.query.table_map.iteritems():
 			if table_name in original_table_map:
 				redux_table_map[table_name] = tables # default, override next if necc.
@@ -55,7 +64,8 @@ class JoinsafeFilterSet(FilterSet):
 				We use the first (tables[0]) because we hopefully don't have to update
 				the alias map, too.
 				"""
-				redux_table_map[table_name] = [tables[0]]
+
+				redux_table_map[table_name] = [table[0]]
 
 			for i in tables:
 				if not i in redux_table_map[table_name]:
