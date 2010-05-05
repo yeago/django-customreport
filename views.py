@@ -10,12 +10,15 @@ class custom_view(object):
 		obj = super(custom_view, cls).__new__(cls)
 		return obj(request, *args, **kwargs)
 
-	def __call__(cls,request,extra_context=None):
+	def __call__(cls,request,extra_modules=None,extra_context=None):
 		cls.request = request
 		cls.extra_context = extra_context or {}
 		cls.display_field_inclusions = getattr(cls,'display_field_inclusions',None)
 		cls.display_field_exclusions = getattr(cls,'display_field_exclusions',None)
 		cls.display_field_depth = getattr(cls,'display_field_depth',None)
+		if extra_modules:
+			cls.modules = getattr(cls,'modules',None) or {}
+			cls.modules.update(extra_modules)
 
 		pre_form = cls.get_pre_form(request)
 		if request.GET:
@@ -119,7 +122,7 @@ class displayset_view(custom_view):
 	"""
 	def __call__(cls, request, filterset_class=None, displayset_class=None, *args, **kwargs):
 		cls.filterset_class = filterset_class or cls.filterset_class
-		cls.filter = filterset_class(request.GET or None,queryset=cls.queryset)
+		cls.filter = cls.filterset_class(request.GET or None,queryset=cls.queryset)
 		kwargs['extra_context'] = kwargs.get('extra_context') or {}
 		kwargs['extra_context'].update({'filter': cls.filter})
 		return custom_view.__call__(cls,request,*args,**kwargs)
