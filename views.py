@@ -10,11 +10,12 @@ class custom_view(object):
 		obj = super(custom_view, cls).__new__(cls)
 		return obj(request, *args, **kwargs)
 
-	def __call__(cls,request,queryset=None,template_name=None,extra_context=None,form=None):
-		cls.template_name = template_name
+	def __call__(cls,request,extra_context=None):
 		cls.request = request
-		cls.queryset = queryset
 		cls.extra_context = extra_context or {}
+		cls.display_field_inclusions = getattr(cls,'display_field_inclusions',None)
+		cls.display_field_exclusions = getattr(cls,'display_field_exclusions',None)
+		cls.display_field_depth = getattr(cls,'display_field_depth',None)
 
 		pre_form = cls.get_pre_form(request)
 		if request.GET:
@@ -52,8 +53,8 @@ class custom_view(object):
 
 	def get_query_form(self):
 		from django_customreport.forms import QueryForm
-		return QueryForm(self.get_queryset(),depth=self.depth,modules=self.modules,\
-				exclusions=self.exclusions,inclusions=self.inclusions,\
+		return QueryForm(self.get_queryset(),depth=self.display_field_depth,modules=self.modules,\
+				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions,\
 				filter_fields=self.request.GET.getlist('filter_fields'),\
 				initial={'display_fields': self.request.GET.getlist('display_fields')})
 
@@ -102,7 +103,7 @@ class displayset_view(custom_view):
 	"""
 	This is a convenience view which will accept five additional arguments.
 
-	1) filter_class - this will build your queryset for you
+	1) filterset_class - this will build your queryset for you
 
 	http://github.com/alex/django-filter
 
@@ -116,18 +117,12 @@ class displayset_view(custom_view):
 	3) change_list_template - this is the template used above
 
 	"""
-	def __call__(cls, filter_class, displayset_class, request, queryset=None,\
-			exclusions=None,inclusions=None,depth=None,modules=None,*args, **kwargs):
-		cls.filter_class = filter_class
-		cls.filter = filter_class(request.GET or None,queryset=queryset)
-		cls.exclusions = exclusions
-		cls.depth = depth
-		cls.inclusions = inclusions
-		cls.displayset_class = displayset_class
-		cls.modules = modules
-		kwargs['extra_context'] = kwargs['extra_context'] or {}
+	def __call__(cls, request, filterset_class=None, displayset_class=None, *args, **kwargs):
+		cls.filterset_class = filterset_class or cls.filterset_class
+		cls.filter = filterset_class(request.GET or None,queryset=cls.queryset)
+		kwargs['extra_context'] = kwargs.get('extra_context') or {}
 		kwargs['extra_context'].update({'filter': cls.filter})
-		return custom_view.__call__(cls,request,queryset=queryset,*args,**kwargs)
+		return custom_view.__call__(cls,request,*args,**kwargs)
 
 	def get_pre_form(self,request):
 		from django_customreport.forms import FilterSetCustomPreForm
@@ -149,7 +144,7 @@ class displayset_view(custom_view):
 		return super(displayset_view,self).render_post_form(**kwargs)
 
 	def get_results(self,queryset,display_fields=None):
-		filter = self.filter_class(self.request.GET,queryset=queryset)
+		filter = self.filterset_class(self.request.GET,queryset=queryset)
 		return super(displayset_view,self).get_results(filter.qs,display_fields=display_fields)
 		
 	def render_results(self,queryset,display_fields=None):

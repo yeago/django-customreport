@@ -3,7 +3,7 @@
 
 Honestly, this project was developed entwined with Alex Gaynor's django-filters and 
 django_displayset, but I have organized it so that it doesn't necessarily depend on
-the others. This documentation, however, will assume you're using it.
+the others. This documentation, however, will assume you're using both. 
 
 Basically, if you provide a django-filter, this project will give you a "pre-form"
 which is a multi-select list of the total fields on that filter. When the user selects
@@ -17,7 +17,7 @@ they can use to route the queryset through some custom logic (an excel export, f
 """
 
 """
-forms.py - the filterset
+forms.py - a django filterset
 """
 
 class CustomFilterSet(JoinsafeFilterSet): # See notes about this in filters.py
@@ -64,27 +64,21 @@ class CustomFilterSet(JoinsafeFilterSet): # See notes about this in filters.py
 """
 views.py
 """
-def custom(request,filterset_class=CustomFilterSet):
-	exclusions = [
+def custom(displayset_view):
+    filterset_class = CustomFilterSet
+    displayset_class = SomeDisplaySet	# see http://github.com/subsume/django-displays. 
+										# Essentialy, its a ModelAdmin like object used 
+										# for displaying like django-admin
+    queryset = Customers.objects.all()
+    template_name = '/some/template.html'
+	display_field_exclusions = [
 		'address__zip__contact',
-		'address__ir',
-		'address__provider',
-		'address__volunteer',
-		'address__interpreterprofile',
-		'address__contact',
-		'address__emergencycontact',
 		'followup',
 		'staff__*',
 		'filereview__user__*',
 		'disability_primary__*',
 		'disability_secondary__*',
 		'location__*',
-		'transfer__staff__*',
-		'transfer__from_staff__*',
-		'transfer__to_staff__*',
-		'files__*',
-		'emergency_contact_primary__address__*',
-		'emergency_contact_secondary__address__*',
 		'contact__staff__*',
 		'contact__program__*',
 		'goals__staff__*',
@@ -94,11 +88,3 @@ def custom(request,filterset_class=CustomFilterSet):
 		'referral__refer_from__*',
 		'referral__refer_to__*',
 	]
-
-	# The DisplaySet expected below is a http://github.com/subsume/django-displayset
-	# Essentialy, its a ModelAdmin like object used for displaying like django-admin
-
-    return customer_displayset_view(filterset_class,CustomerDisplaySet,request,exclusions=exclusions,depth=3,\
-            template_name="customer/reports/custom.html",\
-            queryset=cmodels.Customer.objects.annotate(Max('contact__date')))
-
