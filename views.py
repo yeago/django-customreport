@@ -162,7 +162,7 @@ class displayset_view(custom_view):
 
 		ff = {}
 		for i in self.request.GET.keys():
-			if not i in ['submit','filter_fields','custom_token']:
+			if not i in ['submit','filter_fields','custom_token','custom_modules','display_fields']:
 				ff[i] = self.request.GET[i]
 
 		self.extra_context.update({'query_form': self.get_query_form(), 'filter_fields': ff})
