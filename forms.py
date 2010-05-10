@@ -28,7 +28,7 @@ class QueryForm(forms.Form):
 	def __init__(self,queryset,inclusions=None,exclusions=None,depth=3,filter_fields=None,modules=None,*args,**kwargs):
 		super(QueryForm,self).__init__(*args,**kwargs)
 		if modules:
-			choices = [('--','---')]
+			choices = [('','---')]
 			choices.extend([(k,' '.join(k.split('_')))for k,v in modules.items()])
 			self.fields['custom_modules'] = forms.ChoiceField(choices=choices,required=False)
 
