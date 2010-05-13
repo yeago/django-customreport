@@ -16,6 +16,7 @@ class custom_view(object):
 		cls.display_field_inclusions = getattr(cls,'display_field_inclusions',None)
 		cls.display_field_exclusions = getattr(cls,'display_field_exclusions',None)
 		cls.display_field_depth = getattr(cls,'display_field_depth',None)
+		cls.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
 		if extra_modules:
 			cls.modules = getattr(cls,'modules',None) or {}
 			cls.modules.update(extra_modules)
@@ -56,10 +57,9 @@ class custom_view(object):
 
 	def get_query_form(self):
 		from django_customreport.forms import QueryForm
-		return QueryForm(self.get_queryset(),depth=self.display_field_depth,modules=self.modules,\
+		return QueryForm(self.get_queryset(),self.request,depth=self.display_field_depth,modules=self.modules,\
 				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions,\
-				filter_fields=self.request.GET.getlist('filter_fields'),\
-				initial={'display_fields': self.request.GET.getlist('display_fields')})
+				non_filter_fields=self.non_filter_fields)
 
 	def get_queryset(self):
 		"""
@@ -158,12 +158,7 @@ class displayset_view(custom_view):
 			if self.modules[self.request.GET.get('custom_modules')]:
 				return self.modules[self.request.GET.get('custom_modules')](self.request,queryset,extra_context=self.extra_context)
 
-		ff = {}
-		for i in self.request.GET.keys():
-			if not i in ['submit','filter_fields','custom_token','custom_modules','display_fields']:
-				ff[i] = self.request.GET[i]
-
-		self.extra_context.update({'query_form': self.get_query_form(), 'filter_fields': ff})
+		self.extra_context.update({'query_form': self.get_query_form()})
 		
 		from django_displayset import views as displayset_views
 		return displayset_views.generic(self.request,queryset,self.displayset_class,\
