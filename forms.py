@@ -25,18 +25,30 @@ class RelationMultipleChoiceField(forms.MultipleChoiceField):
 		super(RelationMultipleChoiceField,self).__init__(*args,**kwargs)
 
 class QueryForm(forms.Form):
-	def __init__(self,queryset,inclusions=None,exclusions=None,depth=3,filter_fields=None,modules=None,*args,**kwargs):
+	def __init__(self,queryset,request,non_filter_fields=None,inclusions=None,exclusions=None,depth=3,modules=None,*args,**kwargs):
 		super(QueryForm,self).__init__(*args,**kwargs)
+		non_filter_fields = non_filter_fields or []
 		if modules:
-			choices = [('--','---')]
+			choices = [('','---')]
 			choices.extend([(k,' '.join(k.split('_')))for k,v in modules.items()])
 			self.fields['custom_modules'] = forms.ChoiceField(choices=choices,required=False)
 
-		self.fields['filter_fields'] = forms.CharField(initial=",".join(filter_fields),\
+		self.fields['filter_fields'] = forms.CharField(initial=",".join(request.GET.getlist('filter_fields')),\
 				widget=forms.widgets.HiddenInput)
+		self.fields['custom_token'] = forms.CharField(initial="yes",widget=forms.widgets.HiddenInput)
+
+		# these are the values for each filter field
+		for i in request.GET.keys():
+			if i not in non_filter_fields:
+				if len(request.GET.getlist(i)) > 1:
+					self.fields[i] = forms.MultipleChoiceField(initial=request.GET.getlist(i),\
+						choices=[(g,g) for g in request.GET.getlist(i)], widget=forms.widgets.MultipleHiddenInput)
+				else:
+					self.fields[i] = forms.CharField(initial=request.GET[i],widget=forms.widgets.HiddenInput)
+
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=\
 				queryset,depth=depth,exclusions=exclusions,\
-				inclusions=inclusions,filter_fields=filter_fields,\
+				inclusions=inclusions,filter_fields=request.GET.getlist('filter_fields'),\
 				required=False,label="Additional display fields")
 
 class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which accepts a django-filters filterset
