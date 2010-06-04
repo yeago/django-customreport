@@ -2,7 +2,7 @@ from django.db.models.sql.constants import LOOKUP_SEP
 from django.template import RequestContext
 from django.shortcuts import render_to_response
 
-from django_customreport.helpers import get_closest_relation, CustomReportDisplaySet, process_queryset
+from django_customreport.helpers import get_closest_relation, process_queryset
 from django_customreport.forms import RelationMultipleChoiceField
 
 class custom_view(object):
