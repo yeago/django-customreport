@@ -100,9 +100,9 @@ class BasicTest(TestCase):
 		qs = process_queryset(smallrange_qs.annotate(Max('contact__date')),display_fields=['contact__date'])
 		self.assertEquals(len(qs),3)
 
-		"""
-		These next tests will fail because in django extra() doesn't currently play nice with aggregates
+		#These next tests will fail because in django extra() doesn't currently play nice with aggregates
 
+		"""
 		qs = process_queryset(smallrange_qs.annotate(Max('contact__date')),display_fields=['contact__hours'])
 		self.assertEquals(qs.aggregate(Sum('contact__hours'))['contact__hours__sum'],12)
 		

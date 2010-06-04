@@ -72,6 +72,7 @@ class JoinsafeFilterSet(FilterSet):
 					if not i in removed_tables:
 						removed_tables[i] = []
 						qs.query.unref_alias(i)
+						qs.query.tables.remove(i)
 
 					new_alias = redux_table_map[table_name][-1]
 					removed_tables[i].append(new_alias)
