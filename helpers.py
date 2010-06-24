@@ -169,13 +169,11 @@ def is_reverse_related(relation,model):
 		return True
 	return False 
 
-class CustomReportDisplaySet(displayset_views.DisplaySet):
-	list_display = []
-	auto_link = False
-	change_list_template = 'customreport/base.html'
-	def __init__(self,*args,**kwargs):
-		self.list_display = self.get_display_funcs()
-		super(CustomReportDisplaySet,self).__init__(*args,**kwargs)
+class CustomReportDisplayList(displayset_views.DisplayList):
+
+	def __init__(self,request,*args,**kwargs):
+		super(CustomReportDisplayList,self).__init__(request,*args,**kwargs)
+		self.list_display.extend(self.get_display_funcs())
 
 	def initial_field_funcs(self):
 		def display_field_def(field_name):	
@@ -190,7 +188,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 		### The function below returns another function, which is used to grab from the result a specific attribute name.
 		## These function returned are the same as the function that would be set in the above class CustomReportDisplaySet
 		## for list_display												
-		custom_report_defs = [(f, display_field_def(f)) for f in self.display_fields or [] if not callable(f)]
+		custom_report_defs = [(f, display_field_def(f)) for f in self.model_admin.display_fields if not callable(f)]
 
 		## To allow the fields to be ordered, we have to set each definition with an attribute called admin_order_field
 		## as the django docs suggest
@@ -200,7 +198,7 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 		# We then take the list of functions, along with their field names, and append them as attributes on this class
 		# which get called later for each result
 		for attr_name,definition in custom_report_defs:
-			setattr(self,attr_name,definition)
+			setattr(self.model_admin,attr_name,definition)
 
 		return [string_repr[0] for string_repr in custom_report_defs]
 	
@@ -225,10 +223,20 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 	
 	def get_display_funcs(self):
 		list_display = self.initial_field_funcs()
-		if self.auto_link:
+		if self.model_admin.auto_link:
 			list_display.insert(0, self.get_link_func())
 		return list_display
 		
+class CustomReportDisplaySet(displayset_views.DisplaySet):
+	list_display = []
+	display_fields = []
+	auto_link = False
+	change_list_template = 'customreport/base.html'
+
+	def get_changelist(self,request):
+		CustomReportDisplayList.filtered_queryset = self.filtered_queryset
+		return CustomReportDisplayList
+
 def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,depth=None,\
 		model_exclusions=None,_max_depth=None,_relation_list=None):
 	"""
