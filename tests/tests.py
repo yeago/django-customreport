@@ -5,7 +5,6 @@ from django.db.models import Max, Sum
 from django.test import TestCase
 
 from django_customreport.tests import models as testmodels
-from django_customreport.filterset import JoinsafeFilterSet
 from django_customreport.helpers import process_queryset
 
 class BasicTest(TestCase):
@@ -17,24 +16,13 @@ class BasicTest(TestCase):
 		a limitation of django_filters queries them separately and therefore we get results when
 		we shouldn't.
 
+		Nix above. We're not a branch.
+
 		"""
 		
-		#First, we make sure Gaynor's version is still broken
-
 		get_vars = {'location__zip_code': '90210', 'location__open_saturday': '2' }
 
-		class RegularPersonFilterSet(django_filters.FilterSet):
-			class Meta:
-				model = testmodels.Person
-				fields = ('location__zip_code','contact__date','location__open_saturday')
-
-		person_filterset = RegularPersonFilterSet(get_vars,queryset=testmodels.Person.objects.all())
-
-		#self.assertEquals(len(person_filterset.qs),1)
-
-		#Second, we make sure the join-safe version works
-
-		class PersonFilterSet(JoinsafeFilterSet):
+		class PersonFilterSet(django_filters.FilterSet):
 			class Meta:
 				model = testmodels.Person
 				fields = ('location__zip_code','contact__date','location__open_saturday')
@@ -108,9 +96,7 @@ class BasicTest(TestCase):
 		
 		qs = process_queryset(largerange_qs.annotate(Max('contact__date')),display_fields=['contact__hours'])
 		self.assertEquals(qs.aggregate(Sum('contact__hours'))['contact__hours__sum'],54)
-		"""
 
-		"""
 		This next test will fail because fields are added to the group by column in the event of aggregation
 		and the person's two dates are identical.
 
@@ -119,4 +105,3 @@ class BasicTest(TestCase):
 		qs = process_queryset(largerange_qs.annotate(Max('contact__date')),display_fields=['contact__date'])
 		self.assertEquals(len(qs),8)
 		"""
-		
