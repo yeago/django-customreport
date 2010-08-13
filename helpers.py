@@ -174,10 +174,14 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 	def __init__(self,request,*args,**kwargs):
 		super(CustomReportDisplayList,self).__init__(request,*args,**kwargs)
 		self.list_display.extend(self.get_display_funcs())
+		self.order_field, self.order_type = self.get_ordering()
+		self.query_set = self.get_query_set()
+		self.get_results(request)
 
 	def initial_field_funcs(self):
 		def display_field_def(field_name):	
 			b = lambda obj: getattr(obj,field_name)
+			b.admin_order_field = field_name
 			name = field_name.split("__")
 			if len(name) > 1:
 				name = ' '.join(name[-2:])
@@ -189,11 +193,6 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 		## These function returned are the same as the function that would be set in the above class CustomReportDisplaySet
 		## for list_display												
 		custom_report_defs = [(f, display_field_def(f)) for f in self.model_admin.display_fields if not callable(f)]
-
-		## To allow the fields to be ordered, we have to set each definition with an attribute called admin_order_field
-		## as the django docs suggest
-		for name,definition in custom_report_defs:
-			definition.admin_order_field = name
 																					
 		# We then take the list of functions, along with their field names, and append them as attributes on this class
 		# which get called later for each result
@@ -293,21 +292,24 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 	current_inclusions = [r.split(LOOKUP_SEP,1)[0] for r in inclusions] # these are the ONLY fields and relations to be returned
 	current_exclusions = [r for r in exclusions if LOOKUP_SEP not in r] # these are the fields / relations we don't want to show up
 
+
+	# Non-relational fields are easy and just get appended to the list as is pretty much
 	non_relation_fields = [f for f in _model_class._meta.fields if \
 			f.name not in current_exclusions and 
 			f.name not in model_exclusions]
-	# We get our forward relations first...
+
+	# Now handle the relations
+	# Get the forward ones
 	relations = [(f.rel.to, f.name, f.verbose_name.lower()) for f in _model_class._meta.fields if \
 			hasattr(f.rel, "to") and \
 			f.name not in current_exclusions and
-			f.rel.to._meta.module_name not in model_exclusions
-	]
-	### ...and extend it with our backward relations
+			f.rel.to._meta.module_name not in model_exclusions]
+
+	# and grab our backward ones
 	relations.extend([(r.model, r.field.related_query_name(), r.model._meta.verbose_name) for r in _model_class._meta.get_all_related_objects() if \
 			r.model._meta.module_name not in current_exclusions and
-			r.model._meta.module_name not in model_exclusions
-	])
-	
+			r.model._meta.module_name not in model_exclusions])
+
 	# We have to handle the inclusion list separately because if there isn't one, we don't want to filter over nothing 
 	if current_inclusions:
 		non_relation_fields = [f for f in non_relation_fields if f.name in current_inclusions]
