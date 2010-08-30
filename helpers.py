@@ -141,7 +141,8 @@ def process_queryset(queryset,display_fields=None):
 		if not select_related_token in select_related:
 			select_related.append(select_related_token)
 
-	queryset = queryset.select_related(*select_related)
+	if select_related:
+		queryset = queryset.select_related(*select_related)
 
 	if distinct:
 		queryset = queryset.distinct()
