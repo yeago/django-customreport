@@ -161,5 +161,5 @@ class displayset_view(custom_view):
 		self.extra_context.update({'query_form': self.get_query_form()})
 		
 		from django_displayset import views as displayset_views
-		return displayset_views.generic(self.request,queryset,self.displayset_class,\
-				extra_context=self.extra_context)
+		return displayset_views.filterset_generic(self.request,self.filter,self.displayset_class,\
+				queryset=queryset,extra_context=self.extra_context)
