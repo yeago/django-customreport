@@ -1,5 +1,4 @@
-"""
-**Refactoring**
+*Refactoring*
 
 Honestly, this project was developed entwined with Alex Gaynor's django-filters and 
 django_displayset, but I have organized it so that it doesn't necessarily depend on
@@ -16,7 +15,6 @@ they can use to route the queryset through some custom logic (an excel export, f
 
 NOTE: For best results, use my branch of django-filters, which fixes a querying restriction.
 
-"""
 
 """
 forms.py - a django filterset
