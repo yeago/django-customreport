@@ -1,5 +1,5 @@
 """
-**Usage**
+**Refactoring**
 
 Honestly, this project was developed entwined with Alex Gaynor's django-filters and 
 django_displayset, but I have organized it so that it doesn't necessarily depend on
