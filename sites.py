@@ -1,12 +1,32 @@
 from django.conf import settings
+from django.utils.functional import update_wrapper
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.cache import never_cache
+from django.shortcuts import render_to_response
+from django.template import RequestContext
 
 class ReportSite(object):
+	app_name = "None"
+	name = "None"
+
 	def __init__(self):
 		self.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
+		self.filter = self.filterset_class(None,queryset=self.queryset)
+		self.fields_template = self.fields_template or 'customreport/fields_form.html'
+
+	def admin_view(self, view, cacheable=False):
+		def inner(request, *args, **kwargs):
+			return view(request, *args, **kwargs)
+		if not cacheable:
+			inner = never_cache(inner)
+		# We add csrf_protect here so this function can be used as a utility
+		# function for any view, without having to repeat 'csrf_protect'.
+		if not getattr(view, 'csrf_exempt', False):
+			inner = csrf_protect(inner)
+		return update_wrapper(inner, view)
 
 	def get_urls(self):
 		from django.conf.urls.defaults import patterns, url, include
-
 		"""
 		if settings.DEBUG:
 			self.check_dependencies()
@@ -18,7 +38,7 @@ class ReportSite(object):
 			return update_wrapper(wrapper, view)
 
 		# Admin-site-wide views.
-		reportpatterns = patterns('',
+		report_patterns = patterns('',
 			url(r'^fields/$',
 				wrap(self.fields, cacheable=True),
 				name='fields'),
@@ -43,9 +63,9 @@ class ReportSite(object):
 			url(r'',include(report_patterns)),
 		)
 
-		urlpatterns = reportpatterns + patterns('',
+		urlpatterns = report_patterns + patterns('',
 			url(r'^$',
-				wrap(self.index),
+				wrap(self.fields),
 				name='index'),
 			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns)),
 		)
@@ -77,12 +97,12 @@ class ReportSite(object):
 		pass
 
 	def fields(self,request,report_id=None):
-		form = cls.get_fields_form(request)
+		form = self.get_fields_form(request)
 		if request.GET and form.is_valid():
 			request.SESSION['report_filter_fields'] = form.cleaned_data.get['filter_fields']
 			return redirect("../filter/")
 
-		return render_to_response("/customreport/fields_form.html", {'form': form}, \
+		return render_to_response(self.fields_template, {'form': form}, \
 			context_instance=RequestContext(request))
 
 	def filters(self,request,report_id=None):
@@ -92,13 +112,13 @@ class ReportSite(object):
 				del kept_filters[i]
 
 		self.filter.filters = kept_filters
-		
+
 		filter_fields = filter_fields or []
 
 		form = self.get_post_form()
-		
+
 		form.fields = kept_fields
-	
+
 		from django import forms
 		if self.request.POST and form.is_valid():
 			request.SESSION['report_filter_criteria'] = form.cleaned_data
@@ -108,7 +128,7 @@ class ReportSite(object):
 
 	def columns(self,report_id=None):
 		return render_to_response(some_template,{'form': self.get_column_form()},context=RequestContext(request))
-		
+
 	def results(self,report_id=None):
 		queryset = self.get_results(self.queryset,display_fields=request.SESSION.get('report_display_fields'))
 		self.displayset_class.display_fields = display_fields

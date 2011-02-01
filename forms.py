@@ -54,7 +54,7 @@ class QueryForm(forms.Form):
 																	required=False,\
 																	label="Additional display fields")
 
-class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which accepts a django-filters filterset
+class FilterSetCustomFieldsForm(BaseCustomPreForm): # Convenience PreForm which accepts a django-filters filterset
 	def __init__(self,filter,data,exclusions=None,inclusions=None,depth=None,queryset=None):
 		self._filter = filter
 		self._exclusions = exclusions
@@ -63,7 +63,7 @@ class FilterSetCustomPreForm(BaseCustomPreForm): # Convenience PreForm which acc
 		if not isinstance(queryset,QuerySet):
 			queryset = filter.queryset
 
-		super(FilterSetCustomPreForm,self).__init__(data,queryset=queryset)
+		super(FilterSetCustomFieldsForm,self).__init__(data,queryset=queryset)
 		self.update_field_labels() # Separated in case __init__ work wants to change these labels.
 
 	def update_field_labels(self):
