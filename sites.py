@@ -1,14 +1,8 @@
 from django.conf import settings
 
 class ReportSite(object):
-    def __init__(self, name=None, app_name='report'):
-        self._registry = {} # model_class class -> admin_class instance
-        self.root_path = None
-        if name is None:
-            self.name = 'report'
-        else:
-            self.name = name
-        self.app_name = app_name
+    def __init__(self):
+		self.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
 
     def get_urls(self):
         from django.conf.urls.defaults import patterns, url, include
@@ -59,22 +53,6 @@ class ReportSite(object):
     def urls(self):
         return self.get_urls(), self.app_name, self.name
     urls = property(urls)
-
-	def __call__(cls, request, filterset_class=None, displayset_class=None, *args, **kwargs):
-		cls.filterset_class = filterset_class or cls.filterset_class
-		cls.filter = cls.filterset_class(request.GET or None,queryset=cls.queryset)
-		kwargs['extra_context'] = kwargs.get('extra_context') or {}
-		kwargs['extra_context'].update({'filter': cls.filter})
-		
-		cls.request = request
-		cls.extra_context = extra_context or {}
-		cls.display_field_inclusions = getattr(cls,'display_field_inclusions',None)
-		cls.display_field_exclusions = getattr(cls,'display_field_exclusions',None)
-		cls.display_field_depth = getattr(cls,'display_field_depth',None)
-		cls.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
-		if extra_modules:
-			cls.modules = getattr(cls,'modules',None) or {}
-			cls.modules.update(extra_modules)
 
 	def get_fields_form(self,request):
 		from django_customreport.forms import FilterSetCustomFieldsForm
