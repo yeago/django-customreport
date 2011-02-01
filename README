@@ -1,20 +1,16 @@
 *Refactoring*
 
-Honestly, this project was developed entwined with Alex Gaynor's django-filters and 
-django_displayset, but I have organized it so that it doesn't necessarily depend on
-the others. This documentation, however, will assume you're using both. 
+This is the refactor branch. There are several things about the old branch that
+were very awkward and didn't particularly work for our use case. 
 
-Basically, if you provide a django-filter, this project will give you a "pre-form"
-which is a multi-select list of the total fields on that filter. When the user selects
-the fields they want, they get a "post-form" which is the filter.form with only those
-fields the user selected.
+Firstly, report paramaters are going to be stored in the session rather than
+shuttled around via GET/POST. The assumption is that the user building the report
+will only be building one at a time.
 
-When they fill out the "post-form" they get a result-set rendered to them with a "query-form"
-which they can use to pick additional "display-fields", select fields to group by, or "modules" which
-they can use to route the queryset through some custom logic (an excel export, for example).
-
-NOTE: For best results, use my branch of django-filters, which fixes a querying restriction.
-
+If they want to build another, they can reset their report state or they can save
+their current report state to a model that serializes their parameters. This opens
+things up to users being able to share reports or run them again and again with
+little modification.
 
 """
 forms.py - a django filterset
