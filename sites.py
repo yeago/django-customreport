@@ -1,58 +1,58 @@
 from django.conf import settings
 
 class ReportSite(object):
-    def __init__(self):
+	def __init__(self):
 		self.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
 
-    def get_urls(self):
-        from django.conf.urls.defaults import patterns, url, include
+	def get_urls(self):
+		from django.conf.urls.defaults import patterns, url, include
 
 		"""
-        if settings.DEBUG:
-            self.check_dependencies()
+		if settings.DEBUG:
+			self.check_dependencies()
 		"""
 
-        def wrap(view, cacheable=False):
-            def wrapper(*args, **kwargs):
-                return self.admin_view(view, cacheable)(*args, **kwargs)
-            return update_wrapper(wrapper, view)
+		def wrap(view, cacheable=False):
+			def wrapper(*args, **kwargs):
+				return self.admin_view(view, cacheable)(*args, **kwargs)
+			return update_wrapper(wrapper, view)
 
-        # Admin-site-wide views.
-        reportpatterns = patterns('',
-            url(r'^fields/$',
-                wrap(self.fields, cacheable=True),
-                name='fields'),
-            url(r'^filters/$',
-                wrap(self.filters, cacheable=True),
-                name='filters'),
-            url(r'^columns/$',
-                wrap(self.columns, cacheable=True),
-                name='columns'),
-            url(r'^results/$',
-                wrap(self.results, cacheable=True),
-                name='results'),
-            url(r'^save/$',
+		# Admin-site-wide views.
+		reportpatterns = patterns('',
+			url(r'^fields/$',
+				wrap(self.fields, cacheable=True),
+				name='fields'),
+			url(r'^filters/$',
+				wrap(self.filters, cacheable=True),
+				name='filters'),
+			url(r'^columns/$',
+				wrap(self.columns, cacheable=True),
+				name='columns'),
+			url(r'^results/$',
+				wrap(self.results, cacheable=True),
+				name='results'),
+			url(r'^save/$',
 		)
 
 		storedreport_patterns = patterns('',
 			url(r'^recall/$'
-                wrap(self.recall, cacheable=True),
-                name='recall'),
+				wrap(self.recall, cacheable=True),
+				name='recall'),
 			url(r'',include(report_patterns)),
 		)
 
 		urlpatterns = reportpatterns + patterns('',
-            url(r'^$',
-                wrap(self.index),
-                name='index'),
-            url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns),
-        )
+			url(r'^$',
+				wrap(self.index),
+				name='index'),
+			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns),
+		)
 
-        return urlpatterns
+		return urlpatterns
 
-    def urls(self):
-        return self.get_urls(), self.app_name, self.name
-    urls = property(urls)
+	def urls(self):
+		return self.get_urls(), self.app_name, self.name
+	urls = property(urls)
 
 	def get_fields_form(self,request):
 		from django_customreport.forms import FilterSetCustomFieldsForm
