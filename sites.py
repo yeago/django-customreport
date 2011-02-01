@@ -99,7 +99,8 @@ class ReportSite(object):
 	def fields(self,request,report_id=None):
 		form = self.get_fields_form(request)
 		if request.GET and form.is_valid():
-			request.SESSION['report_filter_fields'] = form.cleaned_data.get['filter_fields']
+
+			request.session['report_filter_fields'] = form.cleaned_data.get('filter_fields')
 			return redirect("../filter/")
 
 		return render_to_response(self.fields_template, {'form': form}, \
@@ -108,7 +109,7 @@ class ReportSite(object):
 	def filters(self,request,report_id=None):
 		kept_filters = self.filter.filters.copy()
 		for i in self.filter.filters:
-			if not i in request.SESSION['report_filter_fields']:
+			if not i in request.session['report_filter_fields']:
 				del kept_filters[i]
 
 		self.filter.filters = kept_filters
@@ -121,7 +122,7 @@ class ReportSite(object):
 
 		from django import forms
 		if self.request.POST and form.is_valid():
-			request.SESSION['report_filter_criteria'] = form.cleaned_data
+			request.session['report_filter_criteria'] = form.cleaned_data
 			return redirect("../results/")
 
 		return render_to_response(some_template,{"form": form},context_instance=RequestContext(request))
@@ -130,7 +131,7 @@ class ReportSite(object):
 		return render_to_response(some_template,{'form': self.get_column_form()},context=RequestContext(request))
 
 	def results(self,report_id=None):
-		queryset = self.get_results(self.queryset,display_fields=request.SESSION.get('report_display_fields'))
+		queryset = self.get_results(self.queryset,display_fields=request.session.get('report_display_fields'))
 		self.displayset_class.display_fields = display_fields
 
 		"""
