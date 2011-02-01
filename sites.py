@@ -107,7 +107,7 @@ class ReportSite(object):
 		return render_to_response(some_template,{"form": form},context_instance=RequestContext(request))
 
 	def columns(self,report_id=None):
-		return render_to_response(some_template,{'form': self.get_column_form()}),context=RequestContext(request))
+		return render_to_response(some_template,{'form': self.get_column_form()},context=RequestContext(request))
 		
 	def results(self,report_id=None):
 		queryset = self.get_results(self.queryset,display_fields=request.SESSION.get('report_display_fields'))
