@@ -32,6 +32,9 @@ class ReportSite(object):
 				wrap(self.results, cacheable=True),
 				name='results'),
 			url(r'^save/$',
+				wrap(self.results, cacheable=True),
+				name='results'),
+			)
 		)
 
 		storedreport_patterns = patterns('',
