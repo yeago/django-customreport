@@ -47,7 +47,7 @@ class ReportSite(object):
 			url(r'^$',
 				wrap(self.index),
 				name='index'),
-			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns),
+			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns)),
 		)
 
 		return urlpatterns
