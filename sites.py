@@ -37,7 +37,7 @@ class ReportSite(object):
 		)
 
 		storedreport_patterns = patterns('',
-			url(r'^recall/$'
+			url(r'^recall/$',
 				wrap(self.recall, cacheable=True),
 				name='recall'),
 			url(r'',include(report_patterns)),
