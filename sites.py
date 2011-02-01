@@ -123,5 +123,3 @@ class ReportSite(object):
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(self.request,self.filter,self.displayset_class,\
 				queryset=queryset,extra_context=self.extra_context)
-	
-site = ReportSite()
