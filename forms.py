@@ -25,9 +25,8 @@ class RelationMultipleChoiceField(forms.MultipleChoiceField):
 		super(RelationMultipleChoiceField,self).__init__(*args,**kwargs)
 
 class ColumnForm(forms.Form):
-	def __init__(self,queryset,request,non_filter_fields=None,inclusions=None,exclusions=None,depth=3,modules=None,*args,**kwargs):
-		super(ColumnForm,self).__init__(*args,**kwargs)
-		non_filter_fields = non_filter_fields or []
+	def __init__(self,queryset,request,data=None,inclusions=None,exclusions=None,depth=3,modules=None,**kwargs):
+		super(ColumnForm,self).__init__(data or None,**kwargs)
 
 		# these are the values for each filter field
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=queryset,\

@@ -105,10 +105,9 @@ class ReportSite(object):
 		return FilterSetCustomFieldsForm(filter,request.GET or None)
 	
 	def get_columns_form(self,request):
-		from django_customreport.forms import QueryForm
-		return QueryForm(self.get_queryset(),request,depth=self.display_field_depth,
-				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions,\
-				non_filter_fields=self.non_filter_fields)
+		from django_customreport.forms import ColumnForm
+		return ColumnForm(self.get_queryset(),request,data=request.GET or None,depth=self.display_field_depth,
+				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions)
 
 	def get_results(self,request,queryset,display_fields=None):
 		filter = self.filterset_class(request.session.get('report:%s_filter_criteria' % self.app_label),queryset=queryset)
@@ -187,17 +186,18 @@ class ReportSite(object):
 
 	def columns(self,request,report_id=None):
 		form = self.get_columns_form(request)
+		form.initial.update({"display_fields": request.session.get("report:%s_columns" % self.app_label)})
 		if request.GET and form.is_valid():
-			request.session['report:%s_columns'] = form.cleaned_data.get('display_fields') 
+			request.session['report:%s_columns' % self.app_label] = form.cleaned_data.get('display_fields') 
 			return redirect(reverse("report:%s_results" % self.app_label))
 
 		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
 
 	def results(self,request,report_id=None):
 		filter = self.filterset_class(request.session.get('report:%s_filter_GET' % self.app_label),queryset=self.get_queryset())
-		display_fields = request.session.get('report:%s_display_fields' % self.app_label) or []
-		queryset = self.get_results(request,filter.qs,display_fields=display_fields)
-		self.displayset_class.display_fields = display_fields
+		columns = request.session.get('report:%s_columns' % self.app_label) or []
+		queryset = self.get_results(request,filter.qs,display_fields=columns)
+		self.displayset_class.display_fields = columns
 
 		"""
 		Refactor this to work more like admin actions.
