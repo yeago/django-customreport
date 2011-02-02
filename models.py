@@ -25,7 +25,7 @@ class DataField(models.TextField):
 
 class Report(models.Model):
 	data = DataField(null=True,blank=True,editable=False) # Serialized dict
-	app = models.CharField(max_length=30,editable=False)
+	app_label = models.CharField(max_length=30,editable=False)
 	name = models.CharField(null=True,blank=True,help_text="User specified name for report")
 	date_added = models.DateTimeField(default=datetime.datetime.now,editable=False)
 	added_by = models.ForeignKey('auth.User')

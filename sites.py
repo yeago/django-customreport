@@ -7,6 +7,8 @@ from django.template import RequestContext
 
 from django.core.urlresolvers import reverse
 
+from django.contrib import messages
+
 from django_customreport.helpers import process_queryset
 
 class ReportSite(object):
@@ -92,14 +94,13 @@ class ReportSite(object):
 		return FilterSetCustomFieldsForm(filter,request.GET or None)
 
 	def get_results(self,request,queryset,display_fields=None):
-		filter = self.filterset_class(request.session.get('report_filter_criteria'),queryset=queryset)
+		filter = self.filterset_class(request.session.get('report:%s_filter_criteria' % self.app_label),queryset=queryset)
 		return process_queryset(filter.qs,display_fields=display_fields)
 
 	def save(self,request,report_id=None):
-
 		data = {}
-		for i in ['report_filter_fields','report_filter_criteria','report_filter_GET','report_columns']:
-			data[i] = request.session.get(i)
+		for i in ['filter_fields','filter_criteria','filter_GET','columns']:
+			data[i] = request.session.get("report:%s_%s" % (self.app_label,i))
 
 		if report_id:
 			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
@@ -122,40 +123,40 @@ class ReportSite(object):
 
 	def fields(self,request,report_id=None):
 		form = self.get_fields_form(request)
-		form.initial.update({'filter_fields': request.session.get('report_filter_fields')})
+		form.initial.update({'filter_fields': request.session.get('report:%s_filter_fields' % self.app_label)})
 		if request.GET and form.is_valid():
-			request.session['report_filter_fields'] = form.cleaned_data.get('filter_fields')
+			request.session['report:%s_filter_fields' % self.app_label] = form.cleaned_data.get('filter_fields')
 			return redirect(reverse("report:%s_filters" % self.app_label))
 
 		return render_to_response(self.fields_template, {'form': form}, \
 			context_instance=RequestContext(request))
 
 	def filters(self,request,report_id=None):
-		if not request.session.get("report_filter_fields"):
+		if not request.session.get("report:%s_filter_fields" % self.app_label):
 			messages.warning(request,"You must choose some fields before filtering")
 			return redirect(reverse("report:%s_fields" % self.app_label))
 		
 		filter = self.filterset_class(request.GET or None,queryset=self.queryset)
 		kept_filters = filter.filters.copy()
 		for i in filter.filters:
-			if not i in request.session['report_filter_fields']:
+			if not i in request.session['report:%s_filter_fields' % self.app_label]:
 				del kept_filters[i]
 
 		filter.filters = kept_filters
 
 		form = filter.form
-		form.initial.update(request.session.get('report_filter_criteria') or {})
+		form.initial.update(request.session.get('report:%s_filter_criteria' % self.app_label) or {})
 
 		kept_fields = form.fields.copy()
 		for i in form.fields:
-			if not i in request.session['report_filter_fields']:
+			if not i in request.session['report:%s_filter_fields' % self.app_label]:
 				del kept_fields[i]
 
 		form.fields = kept_fields
 		
 		if request.GET and form.is_valid():
-			request.session['report_filter_criteria'] = form.cleaned_data
-			request.session['report_filter_GET'] = request.GET
+			request.session['report:%s_filter_criteria' % self.app_label] = form.cleaned_data
+			request.session['report:%s_filter_GET' % self.app_label] = request.GET
 			return redirect(reverse("report:%s_results" % self.app_label))
 
 		return render_to_response(self.filters_template, {"form": form }, context_instance=RequestContext(request))
@@ -164,8 +165,8 @@ class ReportSite(object):
 		return render_to_response(some_template,{'form': self.get_column_form()},context=RequestContext(request))
 
 	def results(self,request,report_id=None):
-		filter = self.filterset_class(request.session.get('report_filter_GET'),queryset=self.queryset)
-		display_fields = request.session.get('report_display_fields') or []
+		filter = self.filterset_class(request.session.get('report:%s_filter_GET' % self.app_label),queryset=self.queryset)
+		display_fields = request.session.get('report:%s_display_fields' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=display_fields)
 		self.displayset_class.display_fields = display_fields
 
