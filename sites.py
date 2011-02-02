@@ -50,39 +50,39 @@ class ReportSite(object):
 		report_patterns = patterns('',
 			url(r'^fields/$',
 				wrap(self.fields, cacheable=True),
-				name='%s_report_fields' % self.app_label),
+				name='%s_fields' % self.app_label),
 			url(r'^filters/$',
 				wrap(self.filters, cacheable=True),
-				name='%s_report_filters' % self.app_label),
+				name='%s_filters' % self.app_label),
 			url(r'^columns/$',
 				wrap(self.columns, cacheable=True),
-				name='%s_report_columns' % self.app_label),
+				name='%s_columns' % self.app_label),
 			url(r'^results/$',
 				wrap(self.results, cacheable=True),
-				name='%s_report_results' % self.app_label),
+				name='%s_results' % self.app_label),
 			url(r'^save/$',
 				wrap(self.results, cacheable=True),
-				name='%s_report_save' % self.app_label),
+				name='%s_save' % self.app_label),
 		)
 
 		storedreport_patterns = patterns('',
 			url(r'^recall/$',
 				wrap(self.recall, cacheable=True),
-				name='recall'),
+				name='%s_recall' % self.app_label),
 			url(r'',include(report_patterns)),
 		)
 
 		urlpatterns = report_patterns + patterns('',
 			url(r'^$',
 				wrap(self.fields),
-				name='index'),
+				name='%s_index' % self.app_label),
 			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns)),
 		)
 
 		return urlpatterns
 
 	def urls(self):
-		return self.get_urls(), "report", self.name
+		return self.get_urls(), "report", self.app_label
 	
 	urls = property(urls)
 
@@ -96,22 +96,45 @@ class ReportSite(object):
 		return process_queryset(filter.qs,display_fields=display_fields)
 
 	def save(self,request,report_id=None):
-		pass
 
-	def recall(self,request,report_id=None):
-		pass
+		data = {}
+		for i in ['report_filter_fields','report_filter_criteria','report_filter_GET','report_columns']:
+			data[i] = request.session.get(i)
+
+		if report_id:
+			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+			report.data = data
+			report.save()
+
+		else:
+			report = Report.objects.create(app_label=self.app_label,data=data,user=request.user)
+
+		messages.success(request,"Your report has been saved")
+
+		return reverse(request.GET.get('return_url'))
+
+	def recall(self,request,report_id):
+		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+		for k, v in report.data.iteritems():
+			request.session[k] = v
+
+		return redirect("report:%s_results" % self.app_label)
 
 	def fields(self,request,report_id=None):
 		form = self.get_fields_form(request)
 		form.initial.update({'filter_fields': request.session.get('report_filter_fields')})
 		if request.GET and form.is_valid():
 			request.session['report_filter_fields'] = form.cleaned_data.get('filter_fields')
-			return redirect(reverse("report:%s_report_filters" % self.app_label))
+			return redirect(reverse("report:%s_filters" % self.app_label))
 
 		return render_to_response(self.fields_template, {'form': form}, \
 			context_instance=RequestContext(request))
 
 	def filters(self,request,report_id=None):
+		if not request.session.get("report_filter_fields"):
+			messages.warning(request,"You must choose some fields before filtering")
+			return redirect(reverse("report:%s_fields" % self.app_label))
+		
 		filter = self.filterset_class(request.GET or None,queryset=self.queryset)
 		kept_filters = filter.filters.copy()
 		for i in filter.filters:
@@ -121,7 +144,7 @@ class ReportSite(object):
 		filter.filters = kept_filters
 
 		form = filter.form
-		form.initial.update(request.session.get('report_filter_criteria'))
+		form.initial.update(request.session.get('report_filter_criteria') or {})
 
 		kept_fields = form.fields.copy()
 		for i in form.fields:
@@ -133,7 +156,7 @@ class ReportSite(object):
 		if request.GET and form.is_valid():
 			request.session['report_filter_criteria'] = form.cleaned_data
 			request.session['report_filter_GET'] = request.GET
-			return redirect(reverse("report:%s_report_results" % self.app_label,args=[report_id]))
+			return redirect(reverse("report:%s_results" % self.app_label))
 
 		return render_to_response(self.filters_template, {"form": form }, context_instance=RequestContext(request))
 
