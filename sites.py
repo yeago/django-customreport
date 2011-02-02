@@ -10,7 +10,6 @@ from django.core.urlresolvers import reverse
 from django.contrib import messages
 
 from django_customreport.helpers import process_queryset
-
 from django_customreport.models import Report
 
 class ReportSite(object):
@@ -22,6 +21,7 @@ class ReportSite(object):
 		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
 		self.filters_template = getattr(self,'filters_template','customreport/filters_form.html')
 		self.columns_template = getattr(self,'fields_template','customreport/column_form.html')
+		self.index_template = getattr(self,'index_template','customreport/index.html')
 		self.display_field_inclusions = getattr(self,'display_field_inclusions',None) or []
 		self.display_field_exclusions = getattr(self,'display_field_exclusions',None) or []
 
@@ -29,6 +29,7 @@ class ReportSite(object):
 			self.app_label = self.queryset.model._meta.verbose_name
 
 		self.name = self.app_label
+		self.extra_context = {'appname': self.name}
 
 	def report_view(self, view, cacheable=False):
 		def inner(request, *args, **kwargs):
@@ -80,8 +81,11 @@ class ReportSite(object):
 		)
 
 		urlpatterns = report_patterns + patterns('',
-			url(r'^$',
-				wrap(self.fields),
+			#url(r'^$', # can't use this url temporarily till we fix the namespacing
+			#	wrap(self.index),
+			#	name='%s_index' % self.app_label),
+			url(r'^saved/$',
+				wrap(self.index),
 				name='%s_index' % self.app_label),
 			url(r'^reset/$',
 				wrap(self.reset, cacheable=True),
@@ -93,7 +97,6 @@ class ReportSite(object):
 
 	def urls(self):
 		return self.get_urls(), "report", self.app_label
-	
 	urls = property(urls)
 
 	def get_queryset(self):
@@ -103,7 +106,7 @@ class ReportSite(object):
 		from django_customreport.forms import FilterSetCustomFieldsForm
 		filter = self.filterset_class()
 		return FilterSetCustomFieldsForm(filter,request.GET or None)
-	
+
 	def get_columns_form(self,request):
 		from django_customreport.forms import ColumnForm
 		return ColumnForm(self.get_queryset(),request,data=request.GET or None,depth=self.display_field_depth,
@@ -158,7 +161,7 @@ class ReportSite(object):
 		if not request.session.get("report:%s_filter_fields" % self.app_label):
 			messages.warning(request,"You must choose some fields before filtering")
 			return redirect(reverse("report:%s_fields" % self.app_label))
-		
+
 		filter = self.filterset_class(request.GET or None,queryset=self.get_queryset())
 		kept_filters = filter.filters.copy()
 		for i in filter.filters:
@@ -176,7 +179,7 @@ class ReportSite(object):
 				del kept_fields[i]
 
 		form.fields = kept_fields
-		
+
 		if request.GET and form.is_valid():
 			request.session['report:%s_filter_criteria' % self.app_label] = form.cleaned_data
 			request.session['report:%s_filter_GET' % self.app_label] = request.GET
@@ -188,7 +191,7 @@ class ReportSite(object):
 		form = self.get_columns_form(request)
 		form.initial.update({"display_fields": request.session.get("report:%s_columns" % self.app_label)})
 		if request.GET and form.is_valid():
-			request.session['report:%s_columns' % self.app_label] = form.cleaned_data.get('display_fields') 
+			request.session['report:%s_columns' % self.app_label] = form.cleaned_data.get('display_fields')
 			return redirect(reverse("report:%s_results" % self.app_label))
 
 		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
@@ -211,3 +214,9 @@ class ReportSite(object):
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
 				queryset=queryset)
+
+	def index(self,request):
+		saved_reports = Report.objects.filter(added_by=request.user)
+		context = {'saved_reports': saved_reports}
+		context.update(self.extra_context)
+		return render_to_response(self.index_template, context, context_instance=RequestContext(request))
