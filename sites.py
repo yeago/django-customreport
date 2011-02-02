@@ -2,8 +2,12 @@ from django.conf import settings
 from django.utils.functional import update_wrapper
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.cache import never_cache
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, redirect
 from django.template import RequestContext
+
+from django.core.urlresolvers import reverse
+
+from django_customreport.helpers import process_queryset
 
 class ReportSite(object):
 	app_name = "None"
@@ -11,10 +15,15 @@ class ReportSite(object):
 
 	def __init__(self):
 		self.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
-		self.filter = self.filterset_class(None,queryset=self.queryset)
-		self.fields_template = self.fields_template or 'customreport/fields_form.html'
+		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
+		self.filters_template = getattr(self,'filters_template','customreport/filters_form.html')
 
-	def admin_view(self, view, cacheable=False):
+		if not hasattr(self,'app_label'):
+			self.app_label = self.queryset.model._meta.verbose_name
+
+		self.name = self.app_label
+
+	def report_view(self, view, cacheable=False):
 		def inner(request, *args, **kwargs):
 			return view(request, *args, **kwargs)
 		if not cacheable:
@@ -34,26 +43,26 @@ class ReportSite(object):
 
 		def wrap(view, cacheable=False):
 			def wrapper(*args, **kwargs):
-				return self.admin_view(view, cacheable)(*args, **kwargs)
+				return self.report_view(view, cacheable)(*args, **kwargs)
 			return update_wrapper(wrapper, view)
 
 		# Admin-site-wide views.
 		report_patterns = patterns('',
 			url(r'^fields/$',
 				wrap(self.fields, cacheable=True),
-				name='fields'),
+				name='%s_report_fields' % self.app_label),
 			url(r'^filters/$',
 				wrap(self.filters, cacheable=True),
-				name='filters'),
+				name='%s_report_filters' % self.app_label),
 			url(r'^columns/$',
 				wrap(self.columns, cacheable=True),
-				name='columns'),
+				name='%s_report_columns' % self.app_label),
 			url(r'^results/$',
 				wrap(self.results, cacheable=True),
-				name='results'),
+				name='%s_report_results' % self.app_label),
 			url(r'^save/$',
 				wrap(self.results, cacheable=True),
-				name='results'),
+				name='%s_report_save' % self.app_label),
 		)
 
 		storedreport_patterns = patterns('',
@@ -73,22 +82,18 @@ class ReportSite(object):
 		return urlpatterns
 
 	def urls(self):
-		return self.get_urls(), self.app_name, self.name
+		return self.get_urls(), "report", self.name
+	
 	urls = property(urls)
 
 	def get_fields_form(self,request):
 		from django_customreport.forms import FilterSetCustomFieldsForm
-		return FilterSetCustomFieldsForm(self.filter,request.GET or None)
+		filter = self.filterset_class()
+		return FilterSetCustomFieldsForm(filter,request.GET or None)
 
-	def get_filter_form(self):
-		return self.filter.form
-
-	def get_queryset(self):
-		return self.filter.queryset
-
-	def get_results(self,queryset,display_fields=None):
-		filter = self.filterset_class(self.request.GET,queryset=queryset)
-		return super(displayset_view,self).get_results(filter.qs,display_fields=display_fields)
+	def get_results(self,request,queryset,display_fields=None):
+		filter = self.filterset_class(request.session.get('report_filter_criteria'),queryset=queryset)
+		return process_queryset(filter.qs,display_fields=display_fields)
 
 	def save(self,request,report_id=None):
 		pass
@@ -98,40 +103,47 @@ class ReportSite(object):
 
 	def fields(self,request,report_id=None):
 		form = self.get_fields_form(request)
+		form.initial.update({'filter_fields': request.session.get('report_filter_fields')})
 		if request.GET and form.is_valid():
-
 			request.session['report_filter_fields'] = form.cleaned_data.get('filter_fields')
-			return redirect("../filter/")
+			return redirect(reverse("report:%s_report_filters" % self.app_label))
 
 		return render_to_response(self.fields_template, {'form': form}, \
 			context_instance=RequestContext(request))
 
 	def filters(self,request,report_id=None):
-		kept_filters = self.filter.filters.copy()
-		for i in self.filter.filters:
+		filter = self.filterset_class(request.GET or None,queryset=self.queryset)
+		kept_filters = filter.filters.copy()
+		for i in filter.filters:
 			if not i in request.session['report_filter_fields']:
 				del kept_filters[i]
 
-		self.filter.filters = kept_filters
+		filter.filters = kept_filters
 
-		filter_fields = filter_fields or []
+		form = filter.form
+		form.initial.update(request.session.get('report_filter_criteria'))
 
-		form = self.get_post_form()
+		kept_fields = form.fields.copy()
+		for i in form.fields:
+			if not i in request.session['report_filter_fields']:
+				del kept_fields[i]
 
 		form.fields = kept_fields
-
-		from django import forms
-		if self.request.POST and form.is_valid():
+		
+		if request.GET and form.is_valid():
 			request.session['report_filter_criteria'] = form.cleaned_data
-			return redirect("../results/")
+			request.session['report_filter_GET'] = request.GET
+			return redirect(reverse("report:%s_report_results" % self.app_label,args=[report_id]))
 
-		return render_to_response(some_template,{"form": form},context_instance=RequestContext(request))
+		return render_to_response(self.filters_template, {"form": form }, context_instance=RequestContext(request))
 
-	def columns(self,report_id=None):
+	def columns(self,request,report_id=None):
 		return render_to_response(some_template,{'form': self.get_column_form()},context=RequestContext(request))
 
-	def results(self,report_id=None):
-		queryset = self.get_results(self.queryset,display_fields=request.session.get('report_display_fields'))
+	def results(self,request,report_id=None):
+		filter = self.filterset_class(request.session.get('report_filter_GET'),queryset=self.queryset)
+		display_fields = request.session.get('report_display_fields') or []
+		queryset = self.get_results(request,filter.qs,display_fields=display_fields)
 		self.displayset_class.display_fields = display_fields
 
 		"""
@@ -144,5 +156,5 @@ class ReportSite(object):
 		"""
 
 		from django_displayset import views as displayset_views
-		return displayset_views.filterset_generic(self.request,self.filter,self.displayset_class,\
-				queryset=queryset,extra_context=self.extra_context)
+		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
+				queryset=queryset)
