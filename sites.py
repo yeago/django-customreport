@@ -80,6 +80,9 @@ class ReportSite(object):
 			url(r'^$',
 				wrap(self.fields),
 				name='%s_index' % self.app_label),
+			url(r'^reset/$',
+				wrap(self.reset, cacheable=True),
+				name='%s_reset' % self.app_label),
 			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns)),
 		)
 
@@ -98,6 +101,13 @@ class ReportSite(object):
 	def get_results(self,request,queryset,display_fields=None):
 		filter = self.filterset_class(request.session.get('report:%s_filter_criteria' % self.app_label),queryset=queryset)
 		return process_queryset(filter.qs,display_fields=display_fields)
+
+	def reset(self,request):
+		for i in ['filter_fields','filter_criteria','filter_GET','columns']:
+			if request.session.get('report:%s_%s' % (self.app_label,i)):
+				del request.session['report:%s_%s' % (self.app_label,i)]
+
+		return redirect("report:%s_index" % self.app_label)
 
 	def save(self,request,report_id=None):
 		data = {}
