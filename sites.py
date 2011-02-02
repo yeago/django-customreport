@@ -11,6 +11,8 @@ from django.contrib import messages
 
 from django_customreport.helpers import process_queryset
 
+from django_customreport.models import Report
+
 class ReportSite(object):
 	app_name = "None"
 	name = "None"
@@ -63,7 +65,7 @@ class ReportSite(object):
 				wrap(self.results, cacheable=True),
 				name='%s_results' % self.app_label),
 			url(r'^save/$',
-				wrap(self.results, cacheable=True),
+				wrap(self.save, cacheable=True),
 				name='%s_save' % self.app_label),
 		)
 
@@ -102,17 +104,17 @@ class ReportSite(object):
 		for i in ['filter_fields','filter_criteria','filter_GET','columns']:
 			data[i] = request.session.get("report:%s_%s" % (self.app_label,i))
 
-		if report_id:
+		if report_id and not request.GET.get("as_new"):
 			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
 			report.data = data
 			report.save()
 
 		else:
-			report = Report.objects.create(app_label=self.app_label,data=data,user=request.user)
+			report = Report.objects.create(app_label=self.app_label,data=data,added_by=request.user)
 
 		messages.success(request,"Your report has been saved")
 
-		return reverse(request.GET.get('return_url'))
+		return redirect(request.GET.get('return_ur') or reverse("report:%s_results" % self.app_label,args=[report.pk]))
 
 	def recall(self,request,report_id):
 		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
