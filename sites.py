@@ -18,8 +18,9 @@ class ReportSite(object):
 
 	def __init__(self):
 		self.non_filter_fields = ['submit']
+		self.fieldsets = getattr(self,'fieldsets',None)
 		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
-		self.columns_template = getattr(self,'fields_template','customreport/column_form.html')
+		self.columns_template = getattr(self,'fields_template','customreport/columns_form.html')
 		self.index_template = getattr(self,'index_template','customreport/index.html')
 		self.display_field_inclusions = getattr(self,'display_field_inclusions',None) or []
 		self.display_field_exclusions = getattr(self,'display_field_exclusions',None) or []
@@ -165,8 +166,28 @@ class ReportSite(object):
 			request.session['%s-report:filter_criteria' % self.app_label] = form.cleaned_data
 			request.session['%s-report:filter_GET' % self.app_label] = request.GET
 			return redirect(reverse("%s-report:results" % self.app_label))
+		
+		fieldsets = []
 
-		return render_to_response(self.filters_template, {"form": form }, context_instance=RequestContext(request))
+		if not self.fieldsets:
+			fieldsets.append((None,{'fields': [f for f in form] }))
+
+		else:
+			accounted_fields = []
+	
+			for fieldset in self.fieldsets:
+				fields = [form.fields[f] for f in fieldset[1]]
+
+				for f in fields:
+					accounted_fields.append(f)
+
+				fieldsets.append((fieldset[0],{'fields': fields}))
+
+			for field in form.fields:
+				if not field in accounted_fields:
+					raise ValueError("Unaccounted field %s in fieldset" % field)
+
+		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets }, context_instance=RequestContext(request))
 
 	def columns(self,request,report_id=None):
 		form = self.get_columns_form(request)
