@@ -6,10 +6,10 @@ from django.db.models.query import QuerySet
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django_customreport.helpers import filter_choice_generator
 
-class BaseCustomPreForm(forms.Form):
+class BaseCustomFieldsForm(forms.Form):
 	def __init__(self,*args,**kwargs):
 		self.queryset = kwargs.pop('queryset')
-		super(BaseCustomPreForm,self).__init__(*args,**kwargs)
+		super(BaseCustomFieldsForm,self).__init__(*args,**kwargs)
 
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
 	def __init__(self,queryset,depth=3,inclusions=None,exclusions=None,filter_fields=None,*args,**kwargs):
@@ -37,7 +37,17 @@ class ColumnForm(forms.Form):
 																	required=False,\
 																	label="Additional display fields")
 
-class FilterSetCustomFieldsForm(BaseCustomPreForm): # Convenience PreForm which accepts a django-filters filterset
+"""
+
+This form will give you a pre-form based on a filterset where the fields are
+chosen before the filterset form is generated.
+
+Its no longer used by default, but still useful in cases where you don't
+want to display all fields.
+
+"""
+
+class FilterSetCustomFieldsForm(BaseCustomFieldsForm): # Convenience PreForm which accepts a django-filters filterset
 	def __init__(self,filter,data,exclusions=None,inclusions=None,depth=None,queryset=None):
 		self._filter = filter
 		self._exclusions = exclusions
