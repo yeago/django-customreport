@@ -58,25 +58,25 @@ class ReportSite(object):
 		report_patterns = patterns('',
 			url(r'^fields/$',
 				wrap(self.fields, cacheable=True),
-				name='%s_fields' % self.app_label),
+				name='fields'),
 			url(r'^filters/$',
 				wrap(self.filters, cacheable=True),
-				name='%s_filters' % self.app_label),
+				name='filters'),
 			url(r'^columns/$',
 				wrap(self.columns, cacheable=True),
-				name='%s_columns' % self.app_label),
+				name='columns'),
 			url(r'^results/$',
 				wrap(self.results, cacheable=True),
-				name='%s_results' % self.app_label),
+				name='results'),
 			url(r'^save/$',
 				wrap(self.save, cacheable=True),
-				name='%s_save' % self.app_label),
+				name='save'),
 		)
 
 		storedreport_patterns = patterns('',
 			url(r'^recall/$',
 				wrap(self.recall, cacheable=True),
-				name='%s_recall' % self.app_label),
+				name='recall'),
 			url(r'',include(report_patterns)),
 		)
 
@@ -86,17 +86,17 @@ class ReportSite(object):
 			#	name='%s_index' % self.app_label),
 			url(r'^saved/$',
 				wrap(self.index),
-				name='%s_index' % self.app_label),
+				name='index'),
 			url(r'^reset/$',
 				wrap(self.reset, cacheable=True),
-				name='%s_reset' % self.app_label),
+				name='reset'),
 			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns)),
 		)
 
 		return urlpatterns
 
 	def urls(self):
-		return self.get_urls(), "report", self.app_label
+		return self.get_urls(), "%s-report" % self.app_label, self.app_label
 	urls = property(urls)
 
 	def get_queryset(self):
@@ -138,7 +138,7 @@ class ReportSite(object):
 
 		messages.success(request,"Your report has been saved")
 
-		return redirect(request.GET.get('return_ur') or reverse("report:%s_results" % self.app_label,args=[report.pk]))
+		return redirect(request.GET.get('return_ur') or reverse("%s-report:results" % self.app_label,args=[report.pk]))
 
 	def recall(self,request,report_id):
 		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
@@ -152,7 +152,7 @@ class ReportSite(object):
 		form.initial.update({'filter_fields': request.session.get('report:%s_filter_fields' % self.app_label)})
 		if request.GET and form.is_valid():
 			request.session['report:%s_filter_fields' % self.app_label] = form.cleaned_data.get('filter_fields')
-			return redirect(reverse("report:%s_filters" % self.app_label))
+			return redirect(reverse("%s-report:filters" % self.app_label))
 
 		return render_to_response(self.fields_template, {'form': form}, \
 			context_instance=RequestContext(request))
@@ -160,7 +160,7 @@ class ReportSite(object):
 	def filters(self,request,report_id=None):
 		if not request.session.get("report:%s_filter_fields" % self.app_label):
 			messages.warning(request,"You must choose some fields before filtering")
-			return redirect(reverse("report:%s_fields" % self.app_label))
+			return redirect(reverse("%s-report:fields" % self.app_label))
 
 		filter = self.filterset_class(request.GET or None,queryset=self.get_queryset())
 		kept_filters = filter.filters.copy()
@@ -183,7 +183,7 @@ class ReportSite(object):
 		if request.GET and form.is_valid():
 			request.session['report:%s_filter_criteria' % self.app_label] = form.cleaned_data
 			request.session['report:%s_filter_GET' % self.app_label] = request.GET
-			return redirect(reverse("report:%s_results" % self.app_label))
+			return redirect(reverse("%s-report:results" % self.app_label))
 
 		return render_to_response(self.filters_template, {"form": form }, context_instance=RequestContext(request))
 
@@ -192,7 +192,7 @@ class ReportSite(object):
 		form.initial.update({"display_fields": request.session.get("report:%s_columns" % self.app_label)})
 		if request.GET and form.is_valid():
 			request.session['report:%s_columns' % self.app_label] = form.cleaned_data.get('display_fields')
-			return redirect(reverse("report:%s_results" % self.app_label))
+			return redirect(reverse("%s-report:results" % self.app_label))
 
 		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
 
