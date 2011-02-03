@@ -176,15 +176,19 @@ class ReportSite(object):
 			accounted_fields = []
 	
 			for fieldset in self.fieldsets:
-				fields = [form.fields[f] for f in fieldset[1]['fields']]
+				fields = []
+				for field_name in fieldset[1]['fields']:
+					for field in form:
+						if field.name == field_name:
+							fields.append(field)
 
-				for f in fields:
-					accounted_fields.append(f)
+							accounted_fields.append(field_name)
+							break
 
 				fieldsets.append((fieldset[0],{'fields': fields}))
 
 			for name, field in form.fields.iteritems():
-				if not field in accounted_fields:
+				if not name in accounted_fields:
 					raise ValueError("Unaccounted field %s in fieldset" % name)
 
 		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets }, context_instance=RequestContext(request))
@@ -212,6 +216,7 @@ class ReportSite(object):
 		saved_reports = Report.objects.filter(added_by=request.user)
 		old_report_session = False
 		if request.session.get('report:%s_filter_criteria' % self.app_label, None):
+			
 			old_report_session = True
 		context = {'saved_reports': saved_reports, 'old_report_session': old_report_session}
 		return render_to_response(self.index_template, context, context_instance=RequestContext(request))
