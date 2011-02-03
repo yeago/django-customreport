@@ -17,7 +17,7 @@ def filter_choice_generator(choices,queryset,filter_fields):
 			continue # Its directly on the qs already. skip the rest of this error checking
 
 		""" Forward Relation Check """
-		model = None	
+		model = None
 		split_relation = f.split('__')[:-1] # we don't want the field it is accessing, so use [:-1]
 		model = queryset.model
 		for rel in split_relation:
@@ -33,13 +33,13 @@ def filter_choice_generator(choices,queryset,filter_fields):
 			# related field on another model
 			if not field_tuple[2] and isinstance(field_tuple[0].field,fields.related.OneToOneField):
 				model = field_tuple[0].model
-				continue 
+				continue
 
 			# if our loop ever reaches this point, that means it failed the above checks and errors MAY be present
 			errors = True
 			break
 
-		""" Reporting Field Check """	
+		""" Reporting Field Check """
 		## 2nd chance: if it exists as a subset query of our filters, then allow it to be displayed, as it won't cause excess queries
 		if not [True for filter_field in filter_fields \
 					if set(split_relation[:-1]).issubset(set(filter_field.split("__")[:-1]))] and errors:
@@ -51,14 +51,13 @@ def filter_choice_generator(choices,queryset,filter_fields):
 		del choices[index]
 
 	return choices
-	
 
 def process_queryset(queryset,display_fields=None):
 	"""
 	This is used in the custom_view below, but its de-coupled so it can be used
 	programatically as well. Simply pass in a queryset and a list of relations to display
 	and viola.
-	
+
 	Relations look like: ['address__zip','contact__date']
 	"""
 
@@ -69,13 +68,13 @@ def process_queryset(queryset,display_fields=None):
 	distinct = True
 	for i in display_fields:
 		if i in queryset.query.aggregates or i in queryset.query.extra:
-			continue # Want below check to work only for relations, excluding aggregates. 
+			continue # Want below check to work only for relations, excluding aggregates.
 
 		select_related_token = i
 		if LOOKUP_SEP in i:
 			"""
 			Since select_related() is rather flexible about what it receives
-			(ignoring things it doesn't like), we'll just haphazardly pass 
+			(ignoring things it doesn't like), we'll just haphazardly pass
 			all filter and display fields in for now.
 			"""
 			select_related_token = i.split(LOOKUP_SEP)
@@ -116,7 +115,7 @@ def process_queryset(queryset,display_fields=None):
 				"""
 
 				join_table = join_model._meta.db_table
-					
+
 				for field_name in primary_model._meta.get_all_field_names():
 					from django.db import models
 					try:
@@ -134,7 +133,7 @@ def process_queryset(queryset,display_fields=None):
 
 					except models.FieldDoesNotExist:
 						pass
-					
+
 				if not join_table in used_routes:
 					used_routes.append(join_table)
 
@@ -168,10 +167,9 @@ def is_reverse_related(relation,model):
 			continue
 
 		return True
-	return False 
+	return False
 
 class CustomReportDisplayList(displayset_views.DisplayList):
-
 	def __init__(self,request,*args,**kwargs):
 		super(CustomReportDisplayList,self).__init__(request,*args,**kwargs)
 		self.list_display.extend(self.get_display_funcs())
@@ -180,7 +178,7 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 		self.get_results(request)
 
 	def initial_field_funcs(self):
-		def display_field_def(field_name):	
+		def display_field_def(field_name):
 			b = lambda obj: getattr(obj,field_name)
 			b.admin_order_field = field_name
 			name = field_name.split("__")
@@ -192,20 +190,20 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 
 		### The function below returns another function, which is used to grab from the result a specific attribute name.
 		## These function returned are the same as the function that would be set in the above class CustomReportDisplaySet
-		## for list_display												
+		## for list_display
 		custom_report_defs = [(f, display_field_def(f)) for f in self.model_admin.display_fields if not callable(f)]
-																					
+
 		# We then take the list of functions, along with their field names, and append them as attributes on this class
 		# which get called later for each result
 		for attr_name,definition in custom_report_defs:
 			setattr(self.model_admin,attr_name,definition)
 
 		return [string_repr[0] for string_repr in custom_report_defs]
-	
+
 	""" hook for setting the links header name """
 	def get_link_description(self):
 		return ''
-	
+
 	def get_link_order(self):
 		return None
 
@@ -215,18 +213,18 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 			return "no 'get_link_description' set"
 
 		def link_name(record):
-			return "<a href='%s'>%s</a>" % (record.get_absolute_url(), record) 
+			return "<a href='%s'>%s</a>" % (record.get_absolute_url(), record)
 		link_name.admin_order_field = self.get_link_order()
 		link_name.allow_tags = True
 		link_name.short_description = description
 		return link_name
-	
+
 	def get_display_funcs(self):
 		list_display = self.initial_field_funcs()
 		if self.model_admin.auto_link:
 			list_display.insert(0, self.get_link_func())
 		return list_display
-		
+
 class CustomReportDisplaySet(displayset_views.DisplaySet):
 	list_display = []
 	display_fields = []
@@ -243,11 +241,11 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 	User Args:
 		depth: how far our relation follows, we want to make sure to include forward then backward relations, as well.
 			ex. depth=1, consumer->field, consumer->disability_primary->field, consumer->address->field, consumer<-goal<-field, consumer<-pwi<-field
-		
+
 		inclusions: A list of string-module relationships we want to be allowed to choose from, if not passed in, it means we want all the relations
-		
+
 		exclusions: A list of string-module relationships to not follow, it could be a field or whole relation.
-		
+
 		query_class: The class at the top of the tree hierarchy, essentially what we are reporting on.
 
 	Function Args:
@@ -256,11 +254,11 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 		_max_depth: Takes the depth, and depth starts as a counter from 0, just easier to read this way
 
 		_relation_list: What our function returns, but we need to pass it through so it can find it's way to the top... may be able to change this though
-	
+
 	function return: A list of tuples, where each tuple represents (string-module relationship, human-readable-value)
 		ex. [
-				('first_name', 'Consumer :: First Name'), 
-				('address__zip',	'Consmer :: Address :: Zip'), 
+				('first_name', 'Consumer :: First Name'),
+				('address__zip',	'Consmer :: Address :: Zip'),
 				('pwi__refer_date', 'Consumer :: PWI :: Referral Date')
 			]
 	"""
@@ -274,29 +272,29 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 	if query_class.__class__ == query.QuerySet:
 		query_aggregates = query_class.query.aggregates
 		query_class = query_class.model
-		
-	_model_class = _model_class or query_class 
+
+	_model_class = _model_class or query_class
 
 	## less typing when calling the function, we use depth to set _max_depth from the first call, and use _max_depth henceforth.
 	# thus depth just keeps track of what level we are on
 	if not _max_depth:
 		_max_depth = depth
-		depth = 0 
+		depth = 0
 
 	exclusions.extend(['logentry', 'message', 'id']) # these are always excluded fields
-	
+
 	## We dont want our backward relations in the next recursive step, so we add it to our exclusions.
 	# as well as the base class.
-	exclusions.append(_model_class._meta.module_name) 
+	exclusions.append(_model_class._meta.module_name)
 	model_exclusions.append(_model_class._meta.module_name)
-	
+
 	current_inclusions = [r.split(LOOKUP_SEP,1)[0] for r in inclusions] # these are the ONLY fields and relations to be returned
 	current_exclusions = [r for r in exclusions if LOOKUP_SEP not in r] # these are the fields / relations we don't want to show up
 
 
 	# Non-relational fields are easy and just get appended to the list as is pretty much
 	non_relation_fields = [f for f in _model_class._meta.fields if \
-			f.name not in current_exclusions and 
+			f.name not in current_exclusions and
 			f.name not in model_exclusions]
 
 	# Now handle the relations
@@ -311,11 +309,11 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 			r.model._meta.module_name not in current_exclusions and
 			r.model._meta.module_name not in model_exclusions])
 
-	# We have to handle the inclusion list separately because if there isn't one, we don't want to filter over nothing 
+	# We have to handle the inclusion list separately because if there isn't one, we don't want to filter over nothing
 	if current_inclusions:
 		non_relation_fields = [f for f in non_relation_fields if f.name in current_inclusions]
 		relations = [r for r in relations if r[0]._meta.module_name in current_inclusions] # r == (model, model.verbose_name)
-	
+
 	# At this point we are finally adding our fields to the tuple list
 	if query_aggregates:
 		[_relation_list.append(( q, q )) for q in query_aggregates.keys()]
@@ -328,22 +326,22 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 				#' :: '.join([_model_class._meta.verbose_name.lower(), field.verbose_name.lower()])
 			))
 		else: _relation_list.append(( field.name, ' :: '.join([_model_class._meta.module_name, field.verbose_name.lower()]) ))
-		
+
 	## Recursion happens at this point, we are basically going down one tree / relations at a time before we do another one
 	# so taking consumer... it will do consumer->address->zip and then it will do consumer->emergency_contact and
 	# then whatever backward relations
 	for relation in relations:
 		# prepare the inclusion/exclusion for the next recursive call by chopping off all relations that match the one in our loop
-		relation_inclusions = [name.split(LOOKUP_SEP, 1)[1] for name in inclusions if LOOKUP_SEP in name and name.split(LOOKUP_SEP,1)[0] == relation[1]] 
+		relation_inclusions = [name.split(LOOKUP_SEP, 1)[1] for name in inclusions if LOOKUP_SEP in name and name.split(LOOKUP_SEP,1)[0] == relation[1]]
 		relation_exclusions = [name.split(LOOKUP_SEP, 1)[1] for name in exclusions if LOOKUP_SEP in name and name.split(LOOKUP_SEP,1)[0] == relation[1]]
-		
+
 		if current_inclusions: pass # if we have inclusions we want to continue with, don't return this tree yet
 		elif depth >= _max_depth: return _relation_list # return this tree
-		
+
 		# if we have reached a star in the exclusions, then skip the rest of this relation
 		if [True for r in relation_exclusions if '*' in r.split(LOOKUP_SEP, 1)[0]]:
 			continue
-		
+
 		# recurse
 		###
 		# we use copy.deepcopy on model_exclusions because we don't want a global list of exclusions everytime it adds a new one,
@@ -354,7 +352,7 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 
 		# build the module-relation and human-readable string
 		###
-		# We check if _model_class != query_class because we have a case here where once we hit the top of the tree, 
+		# We check if _model_class != query_class because we have a case here where once we hit the top of the tree,
 		# then we don't want to append the query_class to the module-relation
 		if _model_class != query_class:
 			_relation_list.extend([
@@ -362,7 +360,7 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 				' :: '.join([relation[2], relation_pair[1]]))
 				for relation_pair in relation_pair_list
 			])
-		else: 
+		else:
 			_relation_list.extend([
 				(LOOKUP_SEP.join([relation[1], relation_pair[0]]),
 				' :: '.join([_model_class._meta.module_name, relation[2], relation_pair[1]])) \
@@ -371,14 +369,14 @@ def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,d
 
 	# go back up the recursion tree now
 	return _relation_list
-	
+
 def get_closest_relation(model,relation,parent=None):
 	if not LOOKUP_SEP in relation:
 		if hasattr(model,'base') and relation in model.base.field.rel.to._meta.get_all_field_names():
 			"""
-			If this model has a base class and the field is really on it, 
+			If this model has a base class and the field is really on it,
 			return the actual base class. They can always explicitly get the
-			subclass. 
+			subclass.
 			"""
 			model = model.base.field.rel.to
 
@@ -394,7 +392,7 @@ def get_closest_relation(model,relation,parent=None):
 		return get_closest_relation(model._meta.get_field_by_name(this_module[0])[0].rel.to,this_module[1],parent=model)
 
 def get_querystring_route(model,relation,parent=None,route=None):
-	route = route or [] 
+	route = route or []
 	if not LOOKUP_SEP in relation:
 		route.append(relation)
 		return "__".join(route)

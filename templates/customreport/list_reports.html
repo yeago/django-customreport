@@ -1,6 +1,7 @@
 {# this template requires the saved reports to be passed in as a queryset #}
 
 <h2>Saved Reports</h2>
+{% if saved_reports %}
 <ul class="report-site-list-saved">
 	{% for r in saved_reports %}
 	<li>
@@ -9,3 +10,6 @@
 	</li>
 	{% endfor %}
 </ul>
+{% else %}
+No saved reports
+{% endif %}

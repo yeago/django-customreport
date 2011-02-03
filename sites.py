@@ -28,7 +28,6 @@ class ReportSite(object):
 			self.app_label = self.queryset.model._meta.verbose_name
 
 		self.name = self.app_label
-		self.extra_context = {'appname': self.name}
 
 	def report_view(self, view, cacheable=False):
 		def inner(request, *args, **kwargs):
@@ -77,10 +76,7 @@ class ReportSite(object):
 		)
 
 		urlpatterns = report_patterns + patterns('',
-			#url(r'^$', # can't use this url temporarily till we fix the namespacing
-			#	wrap(self.index),
-			#	name='%s_index' % self.app_label),
-			url(r'^saved/$',
+			url(r'^$',
 				wrap(self.index),
 				name='index'),
 			url(r'^reset/$',
@@ -187,21 +183,14 @@ class ReportSite(object):
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
 		self.displayset_class.display_fields = columns
 
-		"""
-		Refactor this to work more like admin actions.
-
-		if self.request.GET.get('custom_modules',None):
-			if self.modules[self.request.GET.get('custom_modules')]:
-				return self.modules[self.request.GET.get('custom_modules')](self.request,queryset,extra_context=self.extra_context)
-
-		"""
-
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
 				queryset=queryset)
 
 	def index(self,request):
 		saved_reports = Report.objects.filter(added_by=request.user)
-		context = {'saved_reports': saved_reports}
-		context.update(self.extra_context)
+		old_report_session = False
+		if request.session.get('report:%s_filter_criteria' % self.app_label, None):
+			old_report_session = True
+		context = {'saved_reports': saved_reports, 'old_report_session': old_report_session}
 		return render_to_response(self.index_template, context, context_instance=RequestContext(request))
