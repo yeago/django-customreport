@@ -176,16 +176,16 @@ class ReportSite(object):
 			accounted_fields = []
 	
 			for fieldset in self.fieldsets:
-				fields = [form.fields[f] for f in fieldset[1]]
+				fields = [form.fields[f] for f in fieldset[1]['fields']]
 
 				for f in fields:
 					accounted_fields.append(f)
 
 				fieldsets.append((fieldset[0],{'fields': fields}))
 
-			for field in form.fields:
+			for name, field in form.fields.iteritems():
 				if not field in accounted_fields:
-					raise ValueError("Unaccounted field %s in fieldset" % field)
+					raise ValueError("Unaccounted field %s in fieldset" % name)
 
 		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets }, context_instance=RequestContext(request))
 
