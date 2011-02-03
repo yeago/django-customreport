@@ -17,9 +17,8 @@ class ReportSite(object):
 	name = "None"
 
 	def __init__(self):
-		self.non_filter_fields = ['submit','filter_fields','custom_token','custom_modules','display_fields']
+		self.non_filter_fields = ['submit']
 		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
-		self.filters_template = getattr(self,'filters_template','customreport/filters_form.html')
 		self.columns_template = getattr(self,'fields_template','customreport/column_form.html')
 		self.index_template = getattr(self,'index_template','customreport/index.html')
 		self.display_field_inclusions = getattr(self,'display_field_inclusions',None) or []
@@ -59,9 +58,6 @@ class ReportSite(object):
 			url(r'^fields/$',
 				wrap(self.fields, cacheable=True),
 				name='fields'),
-			url(r'^filters/$',
-				wrap(self.filters, cacheable=True),
-				name='filters'),
 			url(r'^columns/$',
 				wrap(self.columns, cacheable=True),
 				name='columns'),
@@ -102,11 +98,6 @@ class ReportSite(object):
 	def get_queryset(self):
 		return self.queryset
 
-	def get_fields_form(self,request):
-		from django_customreport.forms import FilterSetCustomFieldsForm
-		filter = self.filterset_class()
-		return FilterSetCustomFieldsForm(filter,request.GET or None)
-
 	def get_columns_form(self,request):
 		from django_customreport.forms import ColumnForm
 		return ColumnForm(self.get_queryset(),request,data=request.GET or None,depth=self.display_field_depth,
@@ -117,7 +108,7 @@ class ReportSite(object):
 		return process_queryset(filter.qs,display_fields=display_fields)
 
 	def reset(self,request):
-		for i in ['filter_fields','filter_criteria','filter_GET','columns']:
+		for i in ['filter_criteria','filter_GET','columns']:
 			if request.session.get('report:%s_%s' % (self.app_label,i)):
 				del request.session['report:%s_%s' % (self.app_label,i)]
 
@@ -125,8 +116,8 @@ class ReportSite(object):
 
 	def save(self,request,report_id=None):
 		data = {}
-		for i in ['filter_fields','filter_criteria','filter_GET','columns']:
-			data[i] = request.session.get("report:%s_%s" % (self.app_label,i))
+		for i in ['filter_criteria','filter_GET','columns']:
+			data[i] = request.session.get("%s-report:%s" % (self.app_label,i))
 
 		if report_id and not request.GET.get("as_new"):
 			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
@@ -145,60 +136,54 @@ class ReportSite(object):
 		for k, v in report.data.iteritems():
 			request.session[k] = v
 
-		return redirect("report:%s_results" % self.app_label)
+		return redirect("%s-report:results" % self.app_label)
 
 	def fields(self,request,report_id=None):
-		form = self.get_fields_form(request)
-		form.initial.update({'filter_fields': request.session.get('report:%s_filter_fields' % self.app_label)})
-		if request.GET and form.is_valid():
-			request.session['report:%s_filter_fields' % self.app_label] = form.cleaned_data.get('filter_fields')
-			return redirect(reverse("%s-report:filters" % self.app_label))
-
-		return render_to_response(self.fields_template, {'form': form}, \
-			context_instance=RequestContext(request))
-
-	def filters(self,request,report_id=None):
-		if not request.session.get("report:%s_filter_fields" % self.app_label):
-			messages.warning(request,"You must choose some fields before filtering")
-			return redirect(reverse("%s-report:fields" % self.app_label))
-
 		filter = self.filterset_class(request.GET or None,queryset=self.get_queryset())
+		"""
 		kept_filters = filter.filters.copy()
 		for i in filter.filters:
-			if not i in request.session['report:%s_filter_fields' % self.app_label]:
+			if not i in request.session['%s-report:filter_fields' % self.app_label]:
 				del kept_filters[i]
 
-		filter.filters = kept_filters
 
+		filter.filters = kept_filters
+		"""
+		
 		form = filter.form
-		form.initial.update(request.session.get('report:%s_filter_criteria' % self.app_label) or {})
+
+		form.initial.update(request.session.get('%s-report:filter_criteria' % self.app_label) or {})
+
+		"""
 
 		kept_fields = form.fields.copy()
 		for i in form.fields:
-			if not i in request.session['report:%s_filter_fields' % self.app_label]:
+			if not i in request.session['%s-report:filter_fields' % self.app_label]:
 				del kept_fields[i]
 
 		form.fields = kept_fields
 
+		"""
+
 		if request.GET and form.is_valid():
-			request.session['report:%s_filter_criteria' % self.app_label] = form.cleaned_data
-			request.session['report:%s_filter_GET' % self.app_label] = request.GET
+			request.session['%s-report:filter_criteria' % self.app_label] = form.cleaned_data
+			request.session['%s-report:filter_GET' % self.app_label] = request.GET
 			return redirect(reverse("%s-report:results" % self.app_label))
 
 		return render_to_response(self.filters_template, {"form": form }, context_instance=RequestContext(request))
 
 	def columns(self,request,report_id=None):
 		form = self.get_columns_form(request)
-		form.initial.update({"display_fields": request.session.get("report:%s_columns" % self.app_label)})
+		form.initial.update({"display_fields": request.session.get("%s-report:columns" % self.app_label)})
 		if request.GET and form.is_valid():
-			request.session['report:%s_columns' % self.app_label] = form.cleaned_data.get('display_fields')
+			request.session['%s-report:columns' % self.app_label] = form.cleaned_data.get('display_fields')
 			return redirect(reverse("%s-report:results" % self.app_label))
 
 		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
 
 	def results(self,request,report_id=None):
-		filter = self.filterset_class(request.session.get('report:%s_filter_GET' % self.app_label),queryset=self.get_queryset())
-		columns = request.session.get('report:%s_columns' % self.app_label) or []
+		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset())
+		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
 		self.displayset_class.display_fields = columns
 
