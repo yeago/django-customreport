@@ -96,6 +96,10 @@ class ReportSite(object):
 		return self.get_urls(), "%s-report" % self.app_label, self.app_label
 	urls = property(urls)
 
+	"""
+	Hooks
+	"""
+
 	def get_queryset(self,request):
 		return self.queryset
 
@@ -105,8 +109,16 @@ class ReportSite(object):
 				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions)
 
 	def get_results(self,request,queryset,display_fields=None):
-		filter = self.filterset_class(request.session.get('%s-report:filter_criteria' % self.app_label),queryset=queryset)
+		filter = self.filterset_class(request.session.get('%s-report:filter_criteria_GET' % self.app_label),queryset=queryset)
 		return process_queryset(filter.qs,display_fields=display_fields)
+
+	def get_report_form(self,request):
+		from django_customreport.forms import ReportForm
+		return ReportForm
+
+	"""
+	Views
+	"""
 
 	def reset(self,request):
 		for i in ['filter_criteria','filter_GET','columns']:
@@ -114,10 +126,6 @@ class ReportSite(object):
 				del request.session['%s-report:%s' % (self.app_label,i)]
 
 		return redirect("%s-report:index" % self.app_label)
-
-	def get_report_form(self,request):
-		from django_customreport.forms import ReportForm
-		return ReportForm
 
 	def details(self,request,report_id):
 		report = get_object_or_404(Report,pk=report_id)
@@ -140,6 +148,8 @@ class ReportSite(object):
 		for i in ['filter_criteria','filter_GET','columns']:
 			data[i] = request.session.get("%s-report:%s" % (self.app_label,i))
 
+		print data
+
 		if report_id and not request.GET.get("as_new"):
 			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
 			report.data = data
@@ -154,6 +164,7 @@ class ReportSite(object):
 
 	def recall(self,request,report_id):
 		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+		print report.data
 		for k, v in report.data.iteritems():
 			request.session[k] = v
 
@@ -161,30 +172,10 @@ class ReportSite(object):
 
 	def fields(self,request,report_id=None):
 		filter = self.filterset_class(request.GET or None,queryset=self.get_queryset(request))
-		"""
-		kept_filters = filter.filters.copy()
-		for i in filter.filters:
-			if not i in request.session['%s-report:filter_fields' % self.app_label]:
-				del kept_filters[i]
-
-
-		filter.filters = kept_filters
-		"""
 
 		form = filter.form
 
 		form.initial.update(request.session.get('%s-report:filter_criteria' % self.app_label) or {})
-
-		"""
-
-		kept_fields = form.fields.copy()
-		for i in form.fields:
-			if not i in request.session['%s-report:filter_fields' % self.app_label]:
-				del kept_fields[i]
-
-		form.fields = kept_fields
-
-		"""
 
 		if request.GET and form.is_valid():
 			request.session['%s-report:filter_criteria' % self.app_label] = form.cleaned_data
@@ -237,7 +228,7 @@ class ReportSite(object):
 	def index(self,request):
 		saved_reports = Report.objects.filter(added_by=request.user)
 		old_report_session = False
-		if request.session.get('report:%s_filter_criteria' % self.app_label, None):
+		if request.session.get('%s-report:filter_criteria' % self.app_label, None):
 
 			old_report_session = True
 		context = {'saved_reports': saved_reports, 'old_report_session': old_report_session}
