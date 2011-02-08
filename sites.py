@@ -20,7 +20,7 @@ class ReportSite(object):
 		self.non_filter_fields = ['submit']
 		self.fieldsets = getattr(self,'fieldsets',None)
 		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
-		self.columns_template = getattr(self,'fields_template','customreport/columns_form.html')
+		self.columns_template = getattr(self,'columns_template','customreport/columns_form.html')
 		self.index_template = getattr(self,'index_template','customreport/index.html')
 		self.display_field_inclusions = getattr(self,'display_field_inclusions',None) or []
 		self.display_field_exclusions = getattr(self,'display_field_exclusions',None) or []
@@ -146,7 +146,7 @@ class ReportSite(object):
 
 		filter.filters = kept_filters
 		"""
-		
+
 		form = filter.form
 
 		form.initial.update(request.session.get('%s-report:filter_criteria' % self.app_label) or {})
@@ -166,7 +166,7 @@ class ReportSite(object):
 			request.session['%s-report:filter_criteria' % self.app_label] = form.cleaned_data
 			request.session['%s-report:filter_GET' % self.app_label] = request.GET
 			return redirect(reverse("%s-report:results" % self.app_label))
-		
+
 		fieldsets = []
 
 		if not self.fieldsets:
@@ -174,7 +174,7 @@ class ReportSite(object):
 
 		else:
 			accounted_fields = []
-	
+
 			for fieldset in self.fieldsets:
 				fields = []
 				for field_name in fieldset[1]['fields']:
@@ -190,7 +190,6 @@ class ReportSite(object):
 			for name, field in form.fields.iteritems():
 				if not name in accounted_fields:
 					raise ValueError("Unaccounted field %s in fieldset" % name)
-
 		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets }, context_instance=RequestContext(request))
 
 	def columns(self,request,report_id=None):
@@ -199,7 +198,6 @@ class ReportSite(object):
 		if request.GET and form.is_valid():
 			request.session['%s-report:columns' % self.app_label] = form.cleaned_data.get('display_fields')
 			return redirect(reverse("%s-report:results" % self.app_label))
-
 		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
 
 	def results(self,request,report_id=None):
@@ -216,7 +214,7 @@ class ReportSite(object):
 		saved_reports = Report.objects.filter(added_by=request.user)
 		old_report_session = False
 		if request.session.get('report:%s_filter_criteria' % self.app_label, None):
-			
+
 			old_report_session = True
 		context = {'saved_reports': saved_reports, 'old_report_session': old_report_session}
 		return render_to_response(self.index_template, context, context_instance=RequestContext(request))
