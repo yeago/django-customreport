@@ -6,6 +6,8 @@ from django.db.models.query import QuerySet
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django_customreport.helpers import filter_choice_generator
 
+from django_customreport.models import Report
+
 class BaseCustomFieldsForm(forms.Form):
 	def __init__(self,*args,**kwargs):
 		self.queryset = kwargs.pop('queryset')
@@ -23,6 +25,11 @@ class RelationMultipleChoiceField(forms.MultipleChoiceField):
 			'widget': FilteredSelectMultiple("display_fields", is_stacked=False)
 		})
 		super(RelationMultipleChoiceField,self).__init__(*args,**kwargs)
+
+class ReportForm(forms.ModelForm):
+	class Meta:
+		model = Report
+		fields = ['name','description']
 
 class ColumnForm(forms.Form):
 	def __init__(self,queryset,request,data=None,inclusions=None,exclusions=None,depth=3,modules=None,**kwargs):

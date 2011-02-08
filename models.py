@@ -25,6 +25,8 @@ class DataField(models.TextField):
 		return base64.b64encode(pickle.dumps(value))
 
 class Report(models.Model):
+	name = models.CharField(max_length=30,null=True,blank=True)
+	description = models.TextField(null=True,blank=True)
 	data = DataField(null=True,blank=True,editable=False) # Serialized dict
 	app_label = models.CharField(max_length=30,editable=False)
 	name = models.CharField(max_length=30,null=True,blank=True,help_text="User specified name for report")
