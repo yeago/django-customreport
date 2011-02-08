@@ -1,6 +1,7 @@
 import datetime
 
 from django.db import models
+from django.core.urlresolvers import reverse
 try:
 	import cPickle as pickle
 except:
@@ -29,3 +30,10 @@ class Report(models.Model):
 	name = models.CharField(max_length=30,null=True,blank=True,help_text="User specified name for report")
 	date_added = models.DateTimeField(default=datetime.datetime.now,editable=False)
 	added_by = models.ForeignKey('auth.User')
+
+	def get_absolute_url(self):
+
+		return reverse('%s-report:recall' % self.app_label,args=[self.pk])
+
+	class Meta:
+		ordering = ['-date_added']

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.utils.functional import update_wrapper
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.cache import never_cache
-from django.shortcuts import render_to_response, redirect
+from django.shortcuts import render_to_response, redirect,get_object_or_404
 from django.template import RequestContext
 
 from django.core.urlresolvers import reverse

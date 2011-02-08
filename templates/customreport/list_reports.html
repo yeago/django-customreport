@@ -5,8 +5,7 @@
 <ul class="report-site-list-saved">
 	{% for r in saved_reports %}
 	<li>
-		<a href="" class="report-site-title-saved">{{ r.title }}</a>
-		<p class="report-site-description-saved">{{ r.description }}</p>
+		<a href="{{ r.get_absolute_url }}" class="report-site-title-saved">{% if r.name %}{{ r.name }} on {% endif %}{{ r.date_added|date }}</a>
 	</li>
 	{% endfor %}
 </ul>
