@@ -92,12 +92,12 @@ class ReportSite(object):
 		return self.get_urls(), "%s-report" % self.app_label, self.app_label
 	urls = property(urls)
 
-	def get_queryset(self):
+	def get_queryset(self,request):
 		return self.queryset
 
 	def get_columns_form(self,request):
 		from django_customreport.forms import ColumnForm
-		return ColumnForm(self.get_queryset(),request,data=request.GET or None,depth=self.display_field_depth,
+		return ColumnForm(self.get_queryset(request),request,data=request.GET or None,depth=self.display_field_depth,
 				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions)
 
 	def get_results(self,request,queryset,display_fields=None):
@@ -136,7 +136,7 @@ class ReportSite(object):
 		return redirect("%s-report:results" % self.app_label)
 
 	def fields(self,request,report_id=None):
-		filter = self.filterset_class(request.GET or None,queryset=self.get_queryset())
+		filter = self.filterset_class(request.GET or None,queryset=self.get_queryset(request))
 		"""
 		kept_filters = filter.filters.copy()
 		for i in filter.filters:
@@ -201,7 +201,7 @@ class ReportSite(object):
 		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
 
 	def results(self,request,report_id=None):
-		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset())
+		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset(request))
 		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
 		self.displayset_class.display_fields = columns
