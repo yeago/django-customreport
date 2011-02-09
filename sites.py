@@ -77,6 +77,10 @@ class ReportSite(object):
 			url(r'^details/$',
 				wrap(self.details, cacheable=True),
 				name='details'),
+			url(r'^delete/$',
+				wrap(self.delete),
+				name='delete'),
+
 			url(r'',include(report_patterns)),
 		)
 
@@ -203,6 +207,18 @@ class ReportSite(object):
 				if not name in accounted_fields:
 					raise ValueError("Unaccounted field %s in fieldset" % name)
 		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets }, context_instance=RequestContext(request))
+
+	def delete(self,request,report_id=None):
+		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+		if report.added_by == request.user:
+			name = report.name
+			report.delete()
+			messages.success(request,"Your report, \"%s\" has been deleted." % name )
+
+		else:
+			messages.error(request,"You do not have permission to delete that report.")
+
+		return redirect("%s-report:index" % self.app_label)
 
 	def columns(self,request,report_id=None):
 		form = self.get_columns_form(request)

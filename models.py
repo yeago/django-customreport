@@ -25,7 +25,6 @@ class DataField(models.TextField):
 		return base64.b64encode(pickle.dumps(value))
 
 class Report(models.Model):
-	name = models.CharField(max_length=30,null=True,blank=True)
 	description = models.TextField(null=True,blank=True)
 	data = DataField(null=True,blank=True,editable=False) # Serialized dict
 	app_label = models.CharField(max_length=30,editable=False)
@@ -34,8 +33,10 @@ class Report(models.Model):
 	added_by = models.ForeignKey('auth.User')
 
 	def get_absolute_url(self):
+		return reverse('%s-report:recall' % self.app_label, args=[self.pk])
 
-		return reverse('%s-report:recall' % self.app_label,args=[self.pk])
+	def get_delete_url(self):
+		return reverse('%s-report:delete' % self.app_label, args=[self.pk])
 
 	class Meta:
 		ordering = ['-date_added']

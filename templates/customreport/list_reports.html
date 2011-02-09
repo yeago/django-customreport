@@ -1,13 +1,33 @@
 {# this template requires the saved reports to be passed in as a queryset #}
 <h2>Saved Reports</h2>
 {% if saved_reports %}
-<ul class="report-site-list-saved">
+<table class="highlight-hover small admin no_actions" style="padding: 4px 10px 4px 5px;">
+	<thead>
+	<tr>
+		<th>Name</th>
+		<th>Created</th>
+		<th>Description</th>
+		<th>&nbsp;</th>
+
+	</tr>
+</thead>
 	{% for r in saved_reports %}
-	<li>
-		<a href="{{ r.get_absolute_url }}" class="report-site-title-saved">{% if r.name %}{{ r.name }} on {% endif %}{{ r.date_added|date }}</a>
-	</li>
+	<tr {% cycle '' 'class="clarify"' %}>
+		<td>
+			<a href="{{ r.get_absolute_url }}">{% if r.name %}{{ r.name }}{% else %}Untitled{% endif %}</a>
+		</td>
+		<td>
+			{{ r.date_added|date }}
+		</td>
+		<td>
+			{% if r.description %}{{ r.description }}{% else %}&nbsp;{% endif %}
+		</td>
+		<td>
+			<a href="{{ r.get_delete_url }}" class="delete">Delete</a>
+		</td>
+	</tr>
 	{% endfor %}
-</ul>
+</table>
 {% else %}
 No saved reports
 {% endif %}
