@@ -148,8 +148,6 @@ class ReportSite(object):
 		for i in ['filter_criteria','filter_GET','columns']:
 			data[i] = request.session.get("%s-report:%s" % (self.app_label,i))
 
-		print data
-
 		if report_id and not request.GET.get("as_new"):
 			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
 			report.data = data
@@ -164,7 +162,6 @@ class ReportSite(object):
 
 	def recall(self,request,report_id):
 		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
-		print report.data
 		for k, v in report.data.iteritems():
 			request.session[k] = v
 
