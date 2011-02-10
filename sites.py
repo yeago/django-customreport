@@ -131,7 +131,7 @@ class ReportSite(object):
 			if request.session.get('%s-report:%s' % (self.app_label,i)):
 				del request.session['%s-report:%s' % (self.app_label,i)]
 
-		return redirect("%s-report:index" % self.app_label)
+		return redirect("%s-report:fields" % self.app_label)
 
 	def details(self,request,report_id):
 		report = get_object_or_404(Report,pk=report_id)
