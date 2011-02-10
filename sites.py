@@ -19,6 +19,7 @@ class ReportSite(object):
 	def __init__(self):
 		self.non_filter_fields = ['submit']
 		self.fieldsets = getattr(self,'fieldsets',None)
+		self.nav_template = getattr(self,'nav_template','customreport/nav.html')
 		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
 		self.details_template = getattr(self,'details_template','customreport/report_form.html')
 		self.columns_template = getattr(self,'columns_template','customreport/columns_form.html')
@@ -42,6 +43,11 @@ class ReportSite(object):
 			inner = csrf_protect(inner)
 		return update_wrapper(inner, view)
 
+	def wrap(self,view, cacheable=False):
+		def wrapper(*args, **kwargs):
+			return self.report_view(view, cacheable)(*args, **kwargs)
+		return update_wrapper(wrapper, view)
+
 	def get_urls(self):
 		from django.conf.urls.defaults import patterns, url, include
 		"""
@@ -49,36 +55,32 @@ class ReportSite(object):
 			self.check_dependencies()
 		"""
 
-		def wrap(view, cacheable=False):
-			def wrapper(*args, **kwargs):
-				return self.report_view(view, cacheable)(*args, **kwargs)
-			return update_wrapper(wrapper, view)
 
 		# Admin-site-wide views.
 		report_patterns = patterns('',
 			url(r'^fields/$',
-				wrap(self.fields, cacheable=True),
+				self.wrap(self.fields, cacheable=True),
 				name='fields'),
 			url(r'^columns/$',
-				wrap(self.columns, cacheable=True),
+				self.wrap(self.columns, cacheable=True),
 				name='columns'),
 			url(r'^results/$',
-				wrap(self.results, cacheable=True),
+				self.wrap(self.results, cacheable=True),
 				name='results'),
 			url(r'^save/$',
-				wrap(self.save, cacheable=True),
+				self.wrap(self.save, cacheable=True),
 				name='save'),
 		)
 
 		storedreport_patterns = patterns('',
 			url(r'^recall/$',
-				wrap(self.recall, cacheable=True),
+				self.wrap(self.recall, cacheable=True),
 				name='recall'),
 			url(r'^details/$',
-				wrap(self.details, cacheable=True),
+				self.wrap(self.details, cacheable=True),
 				name='details'),
 			url(r'^delete/$',
-				wrap(self.delete),
+				self.wrap(self.delete),
 				name='delete'),
 
 			url(r'',include(report_patterns)),
@@ -86,10 +88,10 @@ class ReportSite(object):
 
 		urlpatterns = report_patterns + patterns('',
 			url(r'^$',
-				wrap(self.index),
+				self.wrap(self.index),
 				name='index'),
 			url(r'^reset/$',
-				wrap(self.reset, cacheable=True),
+				self.wrap(self.reset, cacheable=True),
 				name='reset'),
 			url(r'^(?P<report_id>[^/]+)/',include(storedreport_patterns)),
 		)
@@ -145,7 +147,7 @@ class ReportSite(object):
 
 			return redirect("%s-report:index" % self.app_label)
 
-		return render_to_response(self.details_template,{'form': form },context_instance=RequestContext(request))
+		return render_to_response(self.details_template,{'form': form, 'nav_template':self.nav_template },context_instance=RequestContext(request))
 
 	def save(self,request,report_id=None):
 		data = {}
@@ -206,7 +208,7 @@ class ReportSite(object):
 			for name, field in form.fields.iteritems():
 				if not name in accounted_fields:
 					raise ValueError("Unaccounted field %s in fieldset" % name)
-		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets }, context_instance=RequestContext(request))
+		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets, "nav_template": self.nav_template}, context_instance=RequestContext(request))
 
 	def delete(self,request,report_id=None):
 		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
@@ -226,7 +228,7 @@ class ReportSite(object):
 		if request.GET and form.is_valid():
 			request.session['%s-report:columns' % self.app_label] = form.cleaned_data.get('display_fields')
 			return redirect(reverse("%s-report:results" % self.app_label))
-		return render_to_response(self.columns_template,{'form': form},context_instance=RequestContext(request))
+		return render_to_response(self.columns_template,{'form': form, 'nav_template': self.nav_template},context_instance=RequestContext(request))
 
 	def results(self,request,report_id=None):
 		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset(request))
@@ -236,7 +238,7 @@ class ReportSite(object):
 
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
-				queryset=queryset)
+				queryset=queryset,extra_context={'nav_template':self.nav_template})
 
 	def index(self,request):
 		saved_reports = Report.objects.filter(added_by=request.user)
@@ -244,5 +246,5 @@ class ReportSite(object):
 		if request.session.get('%s-report:filter_criteria' % self.app_label, None):
 
 			old_report_session = True
-		context = {'saved_reports': saved_reports, 'old_report_session': old_report_session}
+		context = {'saved_reports': saved_reports, 'old_report_session': old_report_session, 'nav_template': self.nav_template}
 		return render_to_response(self.index_template, context, context_instance=RequestContext(request))
