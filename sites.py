@@ -235,6 +235,7 @@ class ReportSite(object):
 		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
 		self.displayset_class.display_fields = columns
+		self.displayset_class.export = False
 
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
