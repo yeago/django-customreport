@@ -38,6 +38,9 @@ class Report(models.Model):
 	def get_delete_url(self):
 		return reverse('%s-report:delete' % self.app_label, args=[self.pk])
 
+	def get_edit_url(self):
+		return reverse('%s-report:details' % self.app_label, args=[self.pk])
+
 	def get_reset_url(self):
 		return reverse('%s-report:reset' % self.app_label, args=[self.pk])
 

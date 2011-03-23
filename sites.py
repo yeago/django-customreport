@@ -164,7 +164,7 @@ class ReportSite(object):
 
 		messages.success(request,"Your report has been saved")
 
-		return redirect(request.GET.get('return_ur') or reverse("%s-report:details" % self.app_label,args=[report.pk]))
+		return redirect(request.GET.get('return_url') or reverse("%s-report:details" % self.app_label,args=[report.pk]))
 
 	def recall(self,request,report_id):
 		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
@@ -235,7 +235,6 @@ class ReportSite(object):
 		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
 		self.displayset_class.display_fields = columns
-		self.displayset_class.export = False
 
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
