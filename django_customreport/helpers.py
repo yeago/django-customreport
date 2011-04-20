@@ -115,6 +115,7 @@ def process_queryset(queryset,display_fields=None):
 				"""
 
 				join_table = join_model._meta.db_table
+				join_column = "id" # Always this for now.
 
 				for field_name in primary_model._meta.get_all_field_names():
 					from django.db import models
@@ -123,7 +124,7 @@ def process_queryset(queryset,display_fields=None):
 						if (isinstance(field,models.OneToOneField) or isinstance(field,models.ForeignKey)) and \
 								field.rel.to == join_model:
 
-							whereclause = '%s.id=%s.%s' % (join_table,primary_table,field.column)
+							whereclause = '%s.%s=%s.%s' % (join_table,join_column,primary_table,field.column)
 							if not join_table in used_routes:
 								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},\
 										tables=[join_table],where=[whereclause])
@@ -179,12 +180,21 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 
 	def initial_field_funcs(self):
 		def display_field_def(field_name):
-			b = lambda obj: getattr(obj,field_name)
+			def follow_relations(obj,field_name):
+				while "__" in field_name:
+					relation, field_name = field_name.split("__",1)
+					obj = getattr(obj,relation)
+
+				return getattr(obj,field_name)
+
+			b = lambda obj: getattr(obj,field_name,follow_relations(obj,field_name))
 			b.admin_order_field = field_name
 			name = field_name.split("__")
 			if len(name) > 1:
 				name = ' '.join(name[-2:])
-			else: name = name[0]
+			else:
+				name = name[0]
+
 			b.short_description = name
 			return b
 
