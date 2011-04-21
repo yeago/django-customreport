@@ -112,7 +112,8 @@ class ReportSite(object):
 	def get_columns_form(self,request):
 		from django_customreport.forms import ColumnForm
 		return ColumnForm(self.get_queryset(request),request,data=request.GET or None,depth=self.display_field_depth,
-				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions)
+				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions,
+				filter_fields=request.session.get('%s-report:filter_criteria' % self.app_label))
 
 	def get_results(self,request,queryset,display_fields=None):
 		filter = self.filterset_class(request.session.get('%s-report:filter_criteria_GET' % self.app_label),queryset=queryset)

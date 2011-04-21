@@ -32,15 +32,14 @@ class ReportForm(forms.ModelForm):
 		fields = ['name','description']
 
 class ColumnForm(forms.Form):
-	def __init__(self,queryset,request,data=None,inclusions=None,exclusions=None,depth=3,modules=None,**kwargs):
+	def __init__(self,queryset,request,data=None,inclusions=None,exclusions=None,depth=3,modules=None,filter_fields=None,**kwargs):
 		super(ColumnForm,self).__init__(data or None,**kwargs)
-
 		# these are the values for each filter field
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=queryset,\
 																	depth=depth,\
 																	exclusions=exclusions,\
 																	inclusions=inclusions,\
-																	filter_fields=request.GET.getlist('filter_fields'),\
+																	filter_fields=filter_fields,\
 																	required=False,\
 																	label="Additional display fields")
 
