@@ -181,13 +181,16 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 	def initial_field_funcs(self):
 		def display_field_def(field_name):
 			def follow_relations(obj,field_name):
+				if getattr(obj,field_name,False):
+					return getattr(obj,field_name)
+
 				while "__" in field_name:
 					relation, field_name = field_name.split("__",1)
 					obj = getattr(obj,relation)
 
 				return getattr(obj,field_name)
 
-			b = lambda obj: getattr(obj,field_name,follow_relations(obj,field_name))
+			b = lambda obj: follow_relations(obj,field_name)
 			b.admin_order_field = field_name
 			name = field_name.split("__")
 			if len(name) > 1:
