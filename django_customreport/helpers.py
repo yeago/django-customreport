@@ -241,6 +241,7 @@ class CustomReportDisplayList(displayset_views.DisplayList):
 class CustomReportDisplaySet(displayset_views.DisplaySet):
 	list_display = []
 	display_fields = []
+	custom_display_fields = []
 	auto_link = False
 	change_list_template = 'customreport/base.html'
 

@@ -113,7 +113,8 @@ class ReportSite(object):
 		from django_customreport.forms import ColumnForm
 		return ColumnForm(self.get_queryset(request),request,data=request.GET or None,depth=self.display_field_depth,
 				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions,
-				filter_fields=request.session.get('%s-report:filter_criteria' % self.app_label))
+				filter_fields=request.session.get('%s-report:filter_criteria' % self.app_label),
+				custom_fields=self.displayset_class.custom_display_fields)
 
 	def get_results(self,request,queryset,display_fields=None):
 		filter = self.filterset_class(request.session.get('%s-report:filter_criteria_GET' % self.app_label),queryset=queryset)
@@ -235,7 +236,12 @@ class ReportSite(object):
 		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset(request))
 		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
-		self.displayset_class.display_fields = columns
+		for cfield in self.displayset_class.custom_display_fields:
+			key = 'custom_%s' % cfield.name
+			if key in columns:
+				columns.remove(key)
+				columns.append(cfield)
+		self.displayset_class.list_display = columns
 
 		from django_displayset import views as displayset_views
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
