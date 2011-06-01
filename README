@@ -1,21 +1,29 @@
-*Refactoring*
+"""
+*Refactoring 6/2011*
 
-This is the refactor branch. There are several things about the old branch that
-were very awkward and didn't particularly work for our use case. 
+Allowing users to display columns has always been a problem because when
+there are changes to models, the introspection might auto-include undesired
+things.
 
-Firstly, report paramaters are going to be stored in the session rather than
-shuttled around via GET/POST. The assumption is that the user building the report
-will only be building one at a time.
+We're going to move the display column inclusions to an admin-like interface
+where report administrators can establish what fields and attributes users
+can select during their report generation.
 
-If they want to build another, they can reset their report state or they can save
-their current report state to a model that serializes their parameters. This opens
-things up to users being able to share reports or run them again and again with
-little modification.
+* Down the road *
+
+1.4 - ChangeList - https://code.djangoproject.com/ticket/5833
+
+This ticket unlocked the admin changelist in a way very similar to Gaynor's
+efforts.  I collaborated with the devs to make sure that features which weren't
+possible in Gaynor's django-filters which was the reason I whipped up 
+https://github.com/subsume/django-qfilters. As of 1.4 you can just use contrib.admin)
 
 """
-forms.py - a django filterset
-"""
 
+
+# EXAMPLE SETUP:
+
+#forms.py - Establish a django filterset a la  
 class CustomFilterSet(FilterSet): # See notes about this in filters.py
     address__zip = CommaFilter(label="Zip")
     disability = DisabilityFilter(queryset=bm.Disability.objects.all(),label="Disability")
@@ -57,30 +65,17 @@ class CustomFilterSet(FilterSet): # See notes about this in filters.py
             'consumertag__tag',
             'address__zip',]
 
-"""
-views.py
-"""
-def custom(displayset_view):
-    filterset_class = CustomFilterSet
-    displayset_class = SomeDisplaySet	# see http://github.com/subsume/django-displays. 
-										# Essentialy, its a ModelAdmin like object used 
-										# for displaying like django-admin
-    queryset = Customers.objects.all()
-    template_name = '/some/template.html'
-	display_field_exclusions = [
-		'address__zip__contact',
-		'followup',
-		'staff__*',
-		'filereview__user__*',
-		'disability_primary__*',
-		'disability_secondary__*',
-		'location__*',
-		'contact__staff__*',
-		'contact__program__*',
-		'goals__staff__*',
-		'goals__type__*',
-		'goals__service__*',
-		'goals__outcome__*',
-		'referral__refer_from__*',
-		'referral__refer_to__*',
-	]
+#report.py
+from django_customreport.sites import ReportSite as BaseReportSite
+class ReportSite(BaseReportSite):
+	queryset = SomeQueryset.objects.all()
+	filterset_class = SomeFilterSet
+	displayset_class = SomeDisplaySet
+
+site = ReportSite()
+
+# urls.py
+from my.report import site
+urlpatterns = patterns('',
+	url('^my-report/$', include(site.urls)),
+)
