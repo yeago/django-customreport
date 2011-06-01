@@ -15,7 +15,7 @@ can select during their report generation.
 
 This ticket unlocked the admin changelist in a way very similar to Gaynor's
 efforts.  I collaborated with the devs to make sure that features which weren't
-possible in Gaynor's django-filters which was the reason I whipped up 
+possible in Gaynor's django-filters were addressed, which was the reason I whipped up 
 https://github.com/subsume/django-qfilters. As of 1.4 you can just use contrib.admin)
 
 """
