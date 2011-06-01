@@ -249,6 +249,116 @@ class CustomReportDisplaySet(displayset_views.DisplaySet):
 		CustomReportDisplayList.filtered_queryset = self.filtered_queryset
 		return CustomReportDisplayList
 
+def display_list_redux(query_class,_model_class=None,inclusions=None,
+		model_exclusions=None,_relation_list=None):
+	"""
+	User Args:
+		inclusions: A list of string-module relationships we want to be allowed to
+				 choose from, if not passed in, it means we want all the relations
+
+		query_class: The class at the top of the tree hierarchy, essentially what
+					we are reporting on.
+
+	Function Args:
+		_model_class: As we progress through the tree, we need to keep track of what model we are on.
+
+		_relation_list: What our function returns, but we need to pass it through so it can find
+			 it's way to the top... may be able to change this though
+
+	function return: A list of tuples, where each tuple represents
+		(string-module relationship, human-readable-value)
+		ex. [
+				('first_name', 'Consumer :: First Name'),
+				('address__zip',	'Consmer :: Address :: Zip'),
+				('pwi__refer_date', 'Consumer :: PWI :: Referral Date')
+			]
+	"""
+	_relation_list = _relation_list or []
+	model_exclusions = model_exclusions or []
+	inclusions = inclusions or []
+
+	# if no model class is passed, then we are at the beginning or "base_class"
+	query_aggregates = None
+	if query_class.__class__ == query.QuerySet:
+		query_aggregates = query_class.query.aggregates
+		query_class = query_class.model
+
+	_model_class = _model_class or query_class
+
+	model_exclusions.append(_model_class._meta.module_name)
+
+	current_inclusions = [r.split(LOOKUP_SEP,1)[0] for r in inclusions] # these are the ONLY fields and relations to be returned
+
+	# Non-relational fields are easy and just get appended to the list as is pretty much
+	non_relation_fields = [f for f in _model_class._meta.fields]
+
+	# Now handle the relations
+	# Get the forward ones
+	relations = [(f.rel.to, f.name, f.verbose_name.lower()) for f in _model_class._meta.fields if \
+			hasattr(f.rel, "to") and \
+			f.rel.to._meta.module_name not in model_exclusions]
+
+	# and grab our backward ones
+	relations.extend([(r.model, r.field.related_query_name(), r.model._meta.verbose_name) for r in _model_class._meta.get_all_related_objects() if \
+			r.model._meta.module_name not in model_exclusions])
+
+	# We have to handle the inclusion list separately because if there isn't one, we don't want to filter over nothing
+	if current_inclusions:
+		non_relation_fields = [f for f in non_relation_fields if f.name in current_inclusions]
+		relations = [r for r in relations if r[0]._meta.module_name in current_inclusions] # r == (model, model.verbose_name)
+
+	# At this point we are finally adding our fields to the tuple list
+	if query_aggregates:
+		[_relation_list.append(( q, q )) for q in query_aggregates.keys()]
+
+	for field in non_relation_fields:
+		if _model_class != query_class:
+			_relation_list.append((
+				field.name,
+				field.verbose_name.lower()
+				#' :: '.join([_model_class._meta.verbose_name.lower(), field.verbose_name.lower()])
+			))
+		else: _relation_list.append(( field.name, ' :: '.join([_model_class._meta.module_name, field.verbose_name.lower()]) ))
+
+	## Recursion happens at this point, we are basically going down one tree / relations at a time before we do another one
+	# so taking consumer... it will do consumer->address->zip and then it will do consumer->emergency_contact and
+	# then whatever backward relations
+	for relation in relations:
+		# prepare the inclusion for the next recursive call by chopping off all relations that match the one in our loop
+		relation_inclusions = [name.split(LOOKUP_SEP, 1)[1] for name in inclusions if LOOKUP_SEP in name and name.split(LOOKUP_SEP,1)[0] == relation[1]]
+
+		if not current_inclusions:
+			return _relation_list
+
+		# recurse
+		###
+		# we use copy.deepcopy on model_exclusions because we don't want a global list of exclusions everytime it adds a new one,
+		# just the ones down this tree
+		relation_pair_list = display_list_redux(query_class,_model_class=relation[0],\
+			inclusions=relation_inclusions,model_exclusions=copy.deepcopy(model_exclusions),\
+			)
+
+		# build the module-relation and human-readable string
+		###
+		# We check if _model_class != query_class because we have a case here where once we hit the top of the tree,
+		# then we don't want to append the query_class to the module-relation
+		if _model_class != query_class:
+			_relation_list.extend([
+				(LOOKUP_SEP.join([relation[1], relation_pair[0]]),
+				' :: '.join([relation[2], relation_pair[1]]))
+				for relation_pair in relation_pair_list
+			])
+		else:
+			_relation_list.extend([
+				(LOOKUP_SEP.join([relation[1], relation_pair[0]]),
+				' :: '.join([_model_class._meta.module_name, relation[2], relation_pair[1]])) \
+				for relation_pair in relation_pair_list
+			])
+
+	# go back up the recursion tree now
+	return _relation_list
+
+
 def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,depth=None,\
 		model_exclusions=None,_max_depth=None,_relation_list=None):
 	"""

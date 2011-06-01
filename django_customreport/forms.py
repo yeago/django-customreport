@@ -6,7 +6,21 @@ from django.db.models.query import QuerySet
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django_customreport.helpers import filter_choice_generator
 
-from django_customreport.models import Report
+from django_customreport.models import Report, ReportSite
+from django_customreport.helpers import display_list, display_list_redux
+
+class ReportSiteForm(forms.ModelForm):
+	def __init__(self,report_site,model,*args,**kwargs):
+		super(ReportSiteForm,self).__init__(*args,**kwargs)
+		instance = kwargs['instance']
+		model = report_site.filterset_class.Meta.model
+		choices = display_list_redux(model,inclusions=\
+			instance.reportcolumn_set.values_list('relation',flat=True))
+		self.fields['columns'] = forms.ChoiceField(choices=choices,widget=forms.CheckboxSelectMultiple)
+
+	class Meta:
+		model = ReportSite
+		exclude = ['site_label']
 
 class BaseCustomFieldsForm(forms.Form):
 	def __init__(self,*args,**kwargs):
@@ -15,7 +29,6 @@ class BaseCustomFieldsForm(forms.Form):
 
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
 	def __init__(self,queryset,depth=3,inclusions=None,exclusions=None,filter_fields=None,custom_fields=None,*args,**kwargs):
-		from django_customreport.helpers import display_list
 		filter_fields = filter_fields or []
 		unfiltered_choices = display_list(queryset,depth=depth,inclusions=inclusions,exclusions=exclusions)
 		choices = filter_choice_generator(unfiltered_choices,queryset,filter_fields)
@@ -34,7 +47,8 @@ class ReportForm(forms.ModelForm):
 		fields = ['name','description']
 
 class ColumnForm(forms.Form):
-	def __init__(self,queryset,request,data=None,inclusions=None,exclusions=None,depth=3,modules=None,filter_fields=None,custom_fields=None,**kwargs):
+	def __init__(self,queryset,request,data=None,inclusions=None,\
+			exclusions=None,depth=3,modules=None,filter_fields=None,custom_fields=None,**kwargs):
 		super(ColumnForm,self).__init__(data or None,**kwargs)
 		# these are the values for each filter field
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=queryset,\

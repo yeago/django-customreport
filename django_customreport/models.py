@@ -49,3 +49,13 @@ class Report(models.Model):
 
 	class Meta:
 		ordering = ['-date_added']
+
+class ReportColumn(models.Model):
+	report_site = models.ForeignKey('ReportSite')
+	relation = models.TextField(help_text="somerelation__someobject__somefield")
+	human_name = models.TextField(null=True,blank=True)
+	cardinality = models.PositiveIntegerField(default=0)
+
+class ReportSite(models.Model):
+	site_label = models.CharField(unique=True,max_length=255)
+	column_inspection_depth = models.PositiveIntegerField(default=3)

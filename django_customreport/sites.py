@@ -10,7 +10,7 @@ from django.core.urlresolvers import reverse
 from django.contrib import messages
 
 from django_customreport.helpers import process_queryset
-from django_customreport.models import Report
+from django_customreport import models as cm
 
 class ReportSite(object):
 	app_name = "None"
@@ -21,6 +21,7 @@ class ReportSite(object):
 		self.fieldsets = getattr(self,'fieldsets',None)
 		self.nav_template = getattr(self,'nav_template','customreport/nav.html')
 		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
+		self.admin_template = getattr(self,'admin_template','customreport/admin_form.html')
 		self.details_template = getattr(self,'details_template','customreport/report_form.html')
 		self.columns_template = getattr(self,'columns_template','customreport/columns_form.html')
 		self.index_template = getattr(self,'index_template','customreport/index.html')
@@ -90,6 +91,9 @@ class ReportSite(object):
 			url(r'^$',
 				self.wrap(self.index),
 				name='index'),
+			url(r'^admin/$',
+				self.wrap(self.admin),
+				name='admin'),
 			url(r'^reset/$',
 				self.wrap(self.reset, cacheable=True),
 				name='reset'),
@@ -135,8 +139,19 @@ class ReportSite(object):
 
 		return redirect("%s-report:fields" % self.app_label)
 
+	def admin(self,request):
+		instance, created = cm.ReportSite.objects.get_or_create(site_label=self.app_label)
+		from django_customreport.forms import ReportSiteForm
+		form = ReportSiteForm(self,request.POST or None,instance=instance)
+		if request.POST and form.is_valid():
+			form.save()
+			messages.success(request,"Report information has been saved")
+			return redirect("%s-report:index" % self.app_label)
+
+		return render_to_response(self.admin_template, {'form': form }, context_instance=RequestContext(request))
+
 	def details(self,request,report_id):
-		report = get_object_or_404(Report,pk=report_id)
+		report = get_object_or_404(cm.Report,pk=report_id)
 
 		form_class = self.get_report_form(request)
 
@@ -157,7 +172,7 @@ class ReportSite(object):
 			data[i] = request.session.get("%s-report:%s" % (self.app_label,i))
 
 		if report_id and not request.GET.get("as_new"):
-			report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+			report = get_object_or_404(cm.Report,app_label=self.name,pk=report_id)
 			report.data = data
 			report.save()
 
@@ -169,7 +184,7 @@ class ReportSite(object):
 		return redirect(request.GET.get('return_url') or reverse("%s-report:details" % self.app_label,args=[report.pk]))
 
 	def recall(self,request,report_id):
-		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+		report = get_object_or_404(cm.Report,app_label=self.name,pk=report_id)
 		for k, v in report.data.iteritems():
 			request.session[k] = v
 
@@ -213,7 +228,7 @@ class ReportSite(object):
 		return render_to_response(self.fields_template, {"form": form, "fieldsets": fieldsets, "nav_template": self.nav_template}, context_instance=RequestContext(request))
 
 	def delete(self,request,report_id=None):
-		report = get_object_or_404(Report,app_label=self.name,pk=report_id)
+		report = get_object_or_404(cm.Report,app_label=self.name,pk=report_id)
 		if report.added_by == request.user:
 			name = report.name
 			report.delete()
