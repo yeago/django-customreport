@@ -6,20 +6,57 @@ from django.db.models.query import QuerySet
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django_customreport.helpers import filter_choice_generator
 
-from django_customreport.models import Report, ReportSite
+from django_customreport import models as cm
 from django_customreport.helpers import display_list, display_list_redux
 
-class ReportSiteForm(forms.ModelForm):
-	def __init__(self,report_site,model,*args,**kwargs):
-		super(ReportSiteForm,self).__init__(*args,**kwargs)
-		instance = kwargs['instance']
-		model = report_site.filterset_class.Meta.model
-		choices = display_list_redux(model,inclusions=\
-			instance.reportcolumn_set.values_list('relation',flat=True))
-		self.fields['columns'] = forms.ChoiceField(choices=choices,widget=forms.CheckboxSelectMultiple)
+class ReportColumnForm(forms.ModelForm):
+	def __init__(self,report_site,*args,**kwargs):
+		self._report_site = report_site
+		super(ReportColumnForm,self).__init__(*args,**kwargs)
+		self.fields['human_name'].widget = forms.TextInput()
+
+	def save(self,commit=True):
+		instance = super(ReportColumnForm,self).save(commit=False)
+		instance.report_site = self._report_site
+		instance.save()
+		return instance
 
 	class Meta:
-		model = ReportSite
+		model = cm.ReportColumn
+		fields = ['human_name']
+
+class ReportSiteForm(forms.ModelForm):
+	def __init__(self,report_site,*args,**kwargs):
+		super(ReportSiteForm,self).__init__(*args,**kwargs)
+		model = report_site.filterset_class.Meta.model
+		choices = display_list_redux(model,inclusions=\
+			self.instance.reportcolumn_set.values_list('relation',flat=True))
+
+		self.fields['columns'] = forms.MultipleChoiceField(choices=[c for c in choices if c[0] not in \
+			list(self.instance.reportcolumn_set.values_list('relation',flat=True))],
+			widget=forms.CheckboxSelectMultiple)
+
+	def save(self,commit=True):
+		instance = super(ReportSiteForm,self).save(commit=commit)
+		for i in self.cleaned_data.get("columns"):
+			human_value = None
+			for c in self.fields['columns'].choices:
+				if c[0] == i:
+					human_value = c[1]
+					break
+
+			if not value:
+				raise Exception("Something went awry! Why wasn't the value found?")
+
+			try:
+				instance.reportcolumn_set.get(relation=i)
+			except cm.ReportColumn.DoesNotExist:
+				instance.reportcolumn_set.create(relation=i,human_name=human_value)
+
+		return instance
+
+	class Meta:
+		model = cm.ReportSite
 		exclude = ['site_label']
 
 class BaseCustomFieldsForm(forms.Form):
@@ -43,7 +80,7 @@ class RelationMultipleChoiceField(forms.MultipleChoiceField):
 
 class ReportForm(forms.ModelForm):
 	class Meta:
-		model = Report
+		model = cm.Report
 		fields = ['name','description']
 
 class ColumnForm(forms.Form):

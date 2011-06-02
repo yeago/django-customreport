@@ -58,4 +58,3 @@ class ReportColumn(models.Model):
 
 class ReportSite(models.Model):
 	site_label = models.CharField(unique=True,max_length=255)
-	column_inspection_depth = models.PositiveIntegerField(default=3)

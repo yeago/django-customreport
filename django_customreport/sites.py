@@ -141,14 +141,20 @@ class ReportSite(object):
 
 	def admin(self,request):
 		instance, created = cm.ReportSite.objects.get_or_create(site_label=self.app_label)
-		from django_customreport.forms import ReportSiteForm
-		form = ReportSiteForm(self,request.POST or None,instance=instance)
-		if request.POST and form.is_valid():
-			form.save()
-			messages.success(request,"Report information has been saved")
-			return redirect("%s-report:index" % self.app_label)
+		from django_customreport.forms import ReportSiteForm, ReportColumnForm
 
-		return render_to_response(self.admin_template, {'form': form }, context_instance=RequestContext(request))
+		form = ReportSiteForm(self,request.POST or None,instance=instance)
+		column_forms = [ReportColumnForm(instance,request.POST or None,instance=i,prefix=i.pk) \
+			for i in instance.reportcolumn_set.all()]
+
+		if request.POST and form.is_valid() and all(f.is_valid() for f in column_forms):
+			form.save()
+			[f.save() for f in column_forms]
+			messages.success(request,"Report information has been saved")
+			return redirect("%s-report:admin" % self.app_label)
+
+		return render_to_response(self.admin_template, {'form': form, 'column_forms': column_forms }, \
+			context_instance=RequestContext(request))
 
 	def details(self,request,report_id):
 		report = get_object_or_404(cm.Report,pk=report_id)
@@ -177,7 +183,7 @@ class ReportSite(object):
 			report.save()
 
 		else:
-			report = Report.objects.create(app_label=self.app_label,data=data,added_by=request.user)
+			report = cm.Report.objects.create(app_label=self.app_label,data=data,added_by=request.user)
 
 		messages.success(request,"Your report has been saved")
 
@@ -263,7 +269,7 @@ class ReportSite(object):
 				queryset=queryset,extra_context={'nav_template':self.nav_template})
 
 	def index(self,request):
-		saved_reports = Report.objects.filter(added_by=request.user)
+		saved_reports = cm.Report.objects.filter(added_by=request.user)
 		old_report_session = False
 		if request.session.get('%s-report:filter_criteria' % self.app_label, None):
 
