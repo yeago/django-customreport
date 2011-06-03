@@ -532,3 +532,11 @@ def get_querystring_route(model,relation,parent=None,route=None):
 		das_rel = model._meta.get_field_by_name(this_module[0])[0].rel
 		route.append(this_module[0])
 		return get_querystring_route(das_rel.to,this_module[1],parent=model,route=route)
+
+"""
+Apply this decorator to any model method you would like to be used in the custom report.
+The method will then be treated like a field that can be reported on.
+"""
+def reportable(function):
+	function.reportable = True
+	return function
