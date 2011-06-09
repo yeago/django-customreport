@@ -4,10 +4,10 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.cache import never_cache
 from django.shortcuts import render_to_response, redirect,get_object_or_404
 from django.template import RequestContext
-
 from django.core.urlresolvers import reverse
-
 from django.contrib import messages
+
+from django_relation_selector import views as rsviews
 
 from django_customreport.helpers import process_queryset
 from django_customreport import models as cm
@@ -15,6 +15,7 @@ from django_customreport import models as cm
 class ReportSite(object):
 	app_name = "None"
 	name = "None"
+	base_template = "customreport/base.html"
 
 	def __init__(self):
 		self.non_filter_fields = ['submit']
@@ -32,6 +33,9 @@ class ReportSite(object):
 			self.app_label = self.queryset.model._meta.verbose_name
 
 		self.name = self.app_label
+
+	def get_context(self):
+		return {'base_template': self.base_template}
 
 	def report_view(self, view, cacheable=False):
 		def inner(request, *args, **kwargs):
@@ -94,6 +98,12 @@ class ReportSite(object):
 			url(r'^admin/$',
 				self.wrap(self.admin),
 				name='admin'),
+			url(r'^relation/select/$',
+				self.wrap(rsviews.relation_select),
+				name='relation_select'),
+			url(r'^column/remove/(?P<relation>.+)/$',
+				self.wrap(self.remove_column),
+				name='remove_column'),
 			url(r'^reset/$',
 				self.wrap(self.reset, cacheable=True),
 				name='reset'),
@@ -115,8 +125,7 @@ class ReportSite(object):
 
 	def get_columns_form(self,request):
 		from django_customreport.forms import ColumnForm
-		return ColumnForm(self.get_queryset(request),request,data=request.GET or None,depth=self.display_field_depth,
-				exclusions=self.display_field_exclusions,inclusions=self.display_field_inclusions,
+		return ColumnForm(self.get_queryset(request),request,data=request.GET or None,
 				filter_fields=request.session.get('%s-report:filter_criteria' % self.app_label),
 				custom_fields=self.displayset_class.custom_display_fields)
 
@@ -142,19 +151,38 @@ class ReportSite(object):
 	def admin(self,request):
 		instance, created = cm.ReportSite.objects.get_or_create(site_label=self.app_label)
 		from django_customreport.forms import ReportSiteForm, ReportColumnForm
-
-		form = ReportSiteForm(self,request.POST or None,instance=instance)
+		form = ReportSiteForm(self,request.POST or None)
 		column_forms = [ReportColumnForm(instance,request.POST or None,instance=i,prefix=i.pk) \
-			for i in instance.reportcolumn_set.all()]
+			for i in instance.reportcolumn_set.order_by('-relation')]
 
-		if request.POST and form.is_valid() and all(f.is_valid() for f in column_forms):
-			form.save()
+		if request.POST:
+			selected_columns = []
+			for k,v in request.POST.items():
+				if v == 'on':
+					col = k
+					if '+' in k:
+						col = k.split('+')[1]
+					if '-' in col:
+						continue
+					selected_columns.append(col)
+
+			for c in selected_columns:
+				human_name = "consumer :: %s" % c.replace('__', ' :: ')
+				cm.ReportColumn.objects.get_or_create(report_site=instance,relation=c,defaults={'human_name': human_name})
+
+		if request.POST and all(f.is_valid() for f in column_forms):
 			[f.save() for f in column_forms]
 			messages.success(request,"Report information has been saved")
 			return redirect("%s-report:admin" % self.app_label)
-
-		return render_to_response(self.admin_template, {'form': form, 'column_forms': column_forms }, \
+		context = {'form': form, 'column_forms': column_forms}
+		context.update(self.get_context())
+		return render_to_response(self.admin_template, context, \
 			context_instance=RequestContext(request))
+
+	def remove_column(self,request,relation):
+		cm.ReportColumn.objects.filter(relation=relation).delete()
+		messages.success(request,"Column '%s' removed" % relation)
+		return redirect("%s-report:admin" % self.app_label)
 
 	def details(self,request,report_id):
 		report = get_object_or_404(cm.Report,pk=report_id)
@@ -257,11 +285,16 @@ class ReportSite(object):
 		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset(request))
 		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
-		for cfield in self.displayset_class.custom_display_fields:
-			key = 'custom_%s' % cfield.name
-			if key in columns:
-				columns.remove(key)
-				columns.append(cfield)
+
+		for c in columns[:]:
+			method_col = getattr(queryset.model, c, None)
+			if callable(method_col):
+				columns.remove(c)
+				col_func = lambda o: getattr(o,c)()
+				col_func.short_description = getattr(getattr(queryset.model,c),"short_description","")
+				col_func.admin_order_field = getattr(getattr(queryset.model,c),"admin_order_field","")
+				columns.append(col_func)
+
 		self.displayset_class.list_display = columns
 
 		from django_displayset import views as displayset_views

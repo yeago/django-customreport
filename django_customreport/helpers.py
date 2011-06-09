@@ -358,7 +358,6 @@ def display_list_redux(query_class,_model_class=None,inclusions=None,
 	# go back up the recursion tree now
 	return _relation_list
 
-
 def display_list(query_class,_model_class=None,inclusions=None,exclusions=None,depth=None,\
 		model_exclusions=None,_max_depth=None,_relation_list=None):
 	"""

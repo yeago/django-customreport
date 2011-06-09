@@ -25,39 +25,33 @@ class ReportColumnForm(forms.ModelForm):
 		model = cm.ReportColumn
 		fields = ['human_name']
 
-class ReportSiteForm(forms.ModelForm):
+class ReportSiteForm(forms.Form):
 	def __init__(self,report_site,*args,**kwargs):
 		super(ReportSiteForm,self).__init__(*args,**kwargs)
 		model = report_site.filterset_class.Meta.model
-		choices = display_list_redux(model,inclusions=\
-			self.instance.reportcolumn_set.values_list('relation',flat=True))
 
-		self.fields['columns'] = forms.MultipleChoiceField(choices=[c for c in choices if c[0] not in \
-			list(self.instance.reportcolumn_set.values_list('relation',flat=True))],
-			widget=forms.CheckboxSelectMultiple)
+		non_relation_fields = [(f.name, f.verbose_name)
+			for f in model._meta.fields if not hasattr(f.rel, "to")]
 
-	def save(self,commit=True):
-		instance = super(ReportSiteForm,self).save(commit=commit)
-		for i in self.cleaned_data.get("columns"):
-			human_value = None
-			for c in self.fields['columns'].choices:
-				if c[0] == i:
-					human_value = c[1]
-					break
-
-			if not value:
-				raise Exception("Something went awry! Why wasn't the value found?")
-
+		model_methods = []
+		for attr in dir(model):
+			possible_method = getattr(model,attr)
 			try:
-				instance.reportcolumn_set.get(relation=i)
-			except cm.ReportColumn.DoesNotExist:
-				instance.reportcolumn_set.create(relation=i,human_name=human_value)
+				if possible_method.reportable:
+					model_methods.append((possible_method.func_name,possible_method.func_name))
+			except AttributeError:
+				pass
 
-		return instance
+		forward_relations = [("%s-%s-%s" % (f.rel.to._meta.app_label, f.rel.to._meta.object_name, f.name), f.verbose_name)
+			for f in model._meta.fields if hasattr(f.rel, "to")]
+		backward_relations = [("%s-%s-%s" % (r.model._meta.app_label, r.model._meta.object_name, r.field.related_query_name()),r.field.related_query_name())
+			for r in model._meta.get_all_related_objects()]
+		choices = non_relation_fields + model_methods + forward_relations + backward_relations
 
-	class Meta:
-		model = cm.ReportSite
-		exclude = ['site_label']
+		for key,name in choices:
+			self.fields[key] = forms.BooleanField(required=False,label=name)
+			if '-' not in key:
+				self.fields[key].widget = forms.CheckboxInput(attrs={'class': 'nonrelation'})
 
 class BaseCustomFieldsForm(forms.Form):
 	def __init__(self,*args,**kwargs):
@@ -65,10 +59,9 @@ class BaseCustomFieldsForm(forms.Form):
 		super(BaseCustomFieldsForm,self).__init__(*args,**kwargs)
 
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
-	def __init__(self,queryset,depth=3,inclusions=None,exclusions=None,filter_fields=None,custom_fields=None,*args,**kwargs):
+	def __init__(self,queryset,choices,filter_fields=None,custom_fields=None,*args,**kwargs):
 		filter_fields = filter_fields or []
-		unfiltered_choices = display_list(queryset,depth=depth,inclusions=inclusions,exclusions=exclusions)
-		choices = filter_choice_generator(unfiltered_choices,queryset,filter_fields)
+		choices = filter_choice_generator(choices,queryset,filter_fields)
 		if custom_fields:
 			[choices.insert(0,('custom_%s' % c.name, c.short_description)) for c in custom_fields]
 
@@ -84,14 +77,13 @@ class ReportForm(forms.ModelForm):
 		fields = ['name','description']
 
 class ColumnForm(forms.Form):
-	def __init__(self,queryset,request,data=None,inclusions=None,\
-			exclusions=None,depth=3,modules=None,filter_fields=None,custom_fields=None,**kwargs):
+	def __init__(self,queryset,request,data=None,modules=None,filter_fields=None,custom_fields=None,**kwargs):
 		super(ColumnForm,self).__init__(data or None,**kwargs)
 		# these are the values for each filter field
+		choices = list(cm.ReportColumn.objects.order_by('-relation'
+			).values_list('relation','human_name'))
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=queryset,\
-																	depth=depth,\
-																	exclusions=exclusions,\
-																	inclusions=inclusions,\
+																	choices=choices,\
 																	filter_fields=filter_fields,\
 																	custom_fields=custom_fields,\
 																	required=False,\

@@ -9,5 +9,8 @@
 	<li><a href="../save/">Save report</a></li>
 	<li><a href="../">View saved reports</a></li>
 	<li><a href="../reset/">Clear current report</a></li>
+	{% if user.is_superuser %}
+	<li><a href="../admin/">Admin</a></li>
+	{% endif %}
 </ul>
 
