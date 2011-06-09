@@ -59,11 +59,9 @@ class BaseCustomFieldsForm(forms.Form):
 		super(BaseCustomFieldsForm,self).__init__(*args,**kwargs)
 
 class RelationMultipleChoiceField(forms.MultipleChoiceField):
-	def __init__(self,queryset,choices,filter_fields=None,custom_fields=None,*args,**kwargs):
+	def __init__(self,queryset,choices,filter_fields=None,*args,**kwargs):
 		filter_fields = filter_fields or []
 		choices = filter_choice_generator(choices,queryset,filter_fields)
-		if custom_fields:
-			[choices.insert(0,('custom_%s' % c.name, c.short_description)) for c in custom_fields]
 
 		kwargs.update({
 			'choices': choices,
@@ -77,7 +75,7 @@ class ReportForm(forms.ModelForm):
 		fields = ['name','description']
 
 class ColumnForm(forms.Form):
-	def __init__(self,queryset,request,data=None,modules=None,filter_fields=None,custom_fields=None,**kwargs):
+	def __init__(self,queryset,request,data=None,modules=None,filter_fields=None,**kwargs):
 		super(ColumnForm,self).__init__(data or None,**kwargs)
 		# these are the values for each filter field
 		choices = list(cm.ReportColumn.objects.order_by('-relation'
@@ -85,7 +83,6 @@ class ColumnForm(forms.Form):
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=queryset,\
 																	choices=choices,\
 																	filter_fields=filter_fields,\
-																	custom_fields=custom_fields,\
 																	required=False,\
 																	label="Additional display fields")
 

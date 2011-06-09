@@ -126,8 +126,7 @@ class ReportSite(object):
 	def get_columns_form(self,request):
 		from django_customreport.forms import ColumnForm
 		return ColumnForm(self.get_queryset(request),request,data=request.GET or None,
-				filter_fields=request.session.get('%s-report:filter_criteria' % self.app_label),
-				custom_fields=self.displayset_class.custom_display_fields)
+				filter_fields=request.session.get('%s-report:filter_criteria' % self.app_label))
 
 	def get_results(self,request,queryset,display_fields=None):
 		filter = self.filterset_class(request.session.get('%s-report:filter_criteria_GET' % self.app_label),queryset=queryset)
@@ -287,12 +286,18 @@ class ReportSite(object):
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
 
 		for c in columns[:]:
+
 			method_col = getattr(queryset.model, c, None)
+			columns.remove(c)
 			if callable(method_col):
-				columns.remove(c)
-				col_func = lambda o: getattr(o,c)()
+				col_func = lambda o,c=c: getattr(o,c)()
 				col_func.short_description = getattr(getattr(queryset.model,c),"short_description","")
 				col_func.admin_order_field = getattr(getattr(queryset.model,c),"admin_order_field","")
+				columns.append(col_func)
+			else:
+				col_func = lambda o,c=c: getattr(o,c)
+				col_func.short_description = c
+				col_func.admin_order_field = c
 				columns.append(col_func)
 
 		self.displayset_class.list_display = columns
