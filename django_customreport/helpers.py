@@ -124,19 +124,23 @@ def process_queryset(queryset,display_fields=None):
 						if (isinstance(field,models.OneToOneField) or isinstance(field,models.ForeignKey)) and \
 								field.rel.to == join_model:
 
+							# 2 foreignkeys on the same model issue
+							# https://code.djangoproject.com/ticket/12890
+							if not select_related_token == field_name:
+								continue
+
 							whereclause = '%s.%s=%s.%s' % (join_table,join_column,primary_table,field.column)
-							if not join_table in used_routes:
+							if not (select_related_token,join_table) in used_routes:
 								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},\
 										tables=[join_table],where=[whereclause])
-
 							else:
 								queryset = queryset.extra(select={i: '%s.%s' % (join_table,join_field.column)},where=[whereclause])
 
 					except models.FieldDoesNotExist:
 						pass
 
-				if not join_table in used_routes:
-					used_routes.append(join_table)
+				if not (select_related_token,join_table) in used_routes:
+					used_routes.append((select_related_token, join_table))
 
 		if not select_related_token in select_related:
 			select_related.append(select_related_token)

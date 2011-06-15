@@ -284,9 +284,7 @@ class ReportSite(object):
 		filter = self.filterset_class(request.session.get('%s-report:filter_GET' % self.app_label),queryset=self.get_queryset(request))
 		columns = request.session.get('%s-report:columns' % self.app_label) or []
 		queryset = self.get_results(request,filter.qs,display_fields=columns)
-
 		for c in columns[:]:
-
 			method_col = getattr(queryset.model, c, None)
 			columns.remove(c)
 			if callable(method_col):
