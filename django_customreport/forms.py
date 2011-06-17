@@ -75,10 +75,10 @@ class ReportForm(forms.ModelForm):
 		fields = ['name','description']
 
 class ColumnForm(forms.Form):
-	def __init__(self,queryset,request,data=None,modules=None,filter_fields=None,**kwargs):
+	def __init__(self,report_site,queryset,request,data=None,modules=None,filter_fields=None,**kwargs):
 		super(ColumnForm,self).__init__(data or None,**kwargs)
 		# these are the values for each filter field
-		choices = list(cm.ReportColumn.objects.order_by('-relation'
+		choices = list(cm.ReportColumn.objects.filter(report_site__site_label=report_site).order_by('-relation'
 			).values_list('relation','human_name'))
 		self.fields['display_fields'] = RelationMultipleChoiceField(queryset=queryset,\
 																	choices=choices,\
