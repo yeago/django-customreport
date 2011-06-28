@@ -16,16 +16,16 @@ class ReportSite(object):
 	app_name = "None"
 	name = "None"
 	base_template = "customreport/base.html"
+	nav_template = "customreport/nav.html"
+	fields_template = "customreport/fields_form.html"
+	admin_template = "customreport/admin_form.html"
+	details_template = "customreport/report_form.html"
+	columns_template = "customreport/columns_form.html"
+	index_template = "customreport/index.html"
 
 	def __init__(self):
 		self.non_filter_fields = ['submit']
 		self.fieldsets = getattr(self,'fieldsets',None)
-		self.nav_template = getattr(self,'nav_template','customreport/nav.html')
-		self.fields_template = getattr(self,'fields_template','customreport/fields_form.html')
-		self.admin_template = getattr(self,'admin_template','customreport/admin_form.html')
-		self.details_template = getattr(self,'details_template','customreport/report_form.html')
-		self.columns_template = getattr(self,'columns_template','customreport/columns_form.html')
-		self.index_template = getattr(self,'index_template','customreport/index.html')
 		self.display_field_inclusions = getattr(self,'display_field_inclusions',None) or []
 		self.display_field_exclusions = getattr(self,'display_field_exclusions',None) or []
 

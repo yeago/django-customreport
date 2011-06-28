@@ -113,7 +113,6 @@ def process_queryset(queryset,display_fields=None):
 
 				for now we just need the join column between the primary table and the join table.
 				"""
-
 				join_table = join_model._meta.db_table
 				join_column = "id" # Always this for now.
 
@@ -126,7 +125,7 @@ def process_queryset(queryset,display_fields=None):
 
 							# 2 foreignkeys on the same model issue
 							# https://code.djangoproject.com/ticket/12890
-							if not select_related_token == field_name:
+							if field_name not in select_related_token:
 								continue
 
 							whereclause = '%s.%s=%s.%s' % (join_table,join_column,primary_table,field.column)
