@@ -62,7 +62,6 @@ class RelationMultipleChoiceField(forms.MultipleChoiceField):
 	def __init__(self,queryset,choices,filter_fields=None,*args,**kwargs):
 		filter_fields = filter_fields or []
 		choices = filter_choice_generator(choices,queryset,filter_fields)
-
 		kwargs.update({
 			'choices': choices,
 			'widget': FilteredSelectMultiple("display_fields", is_stacked=False)

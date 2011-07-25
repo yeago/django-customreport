@@ -55,11 +55,6 @@ class ReportSite(object):
 
 	def get_urls(self):
 		from django.conf.urls.defaults import patterns, url, include
-		"""
-		if settings.DEBUG:
-			self.check_dependencies()
-		"""
-
 
 		# Admin-site-wide views.
 		report_patterns = patterns('',
@@ -136,15 +131,17 @@ class ReportSite(object):
 		from django_customreport.forms import ReportForm
 		return ReportForm
 
+	def reset_session(self,request):
+		for i in ['filter_criteria','filter_GET','columns']:
+			if request.session.get('%s-report:%s' % (self.app_label,i)):
+				del request.session['%s-report:%s' % (self.app_label,i)]
+
 	"""
 	Views
 	"""
 
 	def reset(self,request):
-		for i in ['filter_criteria','filter_GET','columns']:
-			if request.session.get('%s-report:%s' % (self.app_label,i)):
-				del request.session['%s-report:%s' % (self.app_label,i)]
-
+		self.reset_session(request)
 		return redirect("%s-report:fields" % self.app_label)
 
 	def admin(self,request):
@@ -218,8 +215,10 @@ class ReportSite(object):
 
 	def recall(self,request,report_id):
 		report = get_object_or_404(cm.Report,app_label=self.name,pk=report_id)
+
 		for k, v in report.data.iteritems():
-			request.session[k] = v
+			report_prefix = '%s-report' % self.app_label
+			request.session[':'.join([report_prefix,k])] = v
 
 		return redirect("%s-report:results" % self.app_label)
 
