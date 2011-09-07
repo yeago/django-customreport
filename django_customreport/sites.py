@@ -33,8 +33,9 @@ class ReportSite(object):
 			self.app_label = self.queryset.model._meta.verbose_name
 
 		self.name = self.app_label
+		self._results = self.queryset.none()
 
-	def get_context(self):
+	def get_context(self,request):
 		return {'base_template': self.base_template}
 
 	def report_view(self, view, cacheable=False):
@@ -125,7 +126,8 @@ class ReportSite(object):
 
 	def get_results(self,request,queryset,display_fields=None):
 		filter = self.filterset_class(request.session.get('%s-report:filter_criteria_GET' % self.app_label),queryset=queryset)
-		return process_queryset(filter.qs,display_fields=display_fields)
+		self._results = process_queryset(filter.qs,display_fields=display_fields)
+		return self._results
 
 	def get_report_form(self,request):
 		from django_customreport.forms import ReportForm
@@ -171,7 +173,7 @@ class ReportSite(object):
 			messages.success(request,"Report information has been saved")
 			return redirect("%s-report:admin" % self.app_label)
 		context = {'form': form, 'column_forms': column_forms}
-		context.update(self.get_context())
+		context.update(self.get_context(request) or {})
 		return render_to_response(self.admin_template, context, \
 			context_instance=RequestContext(request))
 
@@ -300,8 +302,10 @@ class ReportSite(object):
 		self.displayset_class.list_display = columns
 
 		from django_displayset import views as displayset_views
+		context = {'nav_template': self.nav_template}
+		context.update(self.get_context(request) or {})
 		return displayset_views.filterset_generic(request,filter,self.displayset_class,\
-				queryset=queryset,extra_context={'nav_template':self.nav_template})
+				queryset=queryset,extra_context=context)
 
 	def index(self,request):
 		saved_reports = cm.Report.objects.filter(added_by=request.user)
